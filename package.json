@@ -1,0 +1,20 @@
+{
+  "name": "quimicarush-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "build": "npm run build --workspaces --if-present",
+    "dev": "npm run dev -w packages/web-app",
+    "typecheck": "tsc --noEmit -p packages/chemistry-core && tsc --noEmit -p packages/chemistry-dataset && tsc --noEmit -p packages/gamification-engine && tsc --noEmit -p packages/smiles-renderer && tsc --noEmit -p packages/web-app"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.5",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.7"
+  }
+}

@@ -1,0 +1,698 @@
+FUNÇÕES ORGÂNICAS
+Objetivos: Espera-se que após essa aula, você possa
+identificar e nomear as principais funções orgânicas.
+
+Prof: Anderson Oliveira
+
+Amida
+
+Apresentam cadeia
+carbônica
+aberta,
+contendo um grupo
+carbonílico ligado ao
+nitrogênio.
+
+Definição: Em química orgânica costumamos Nitrila
+chamar de grupo funcional a um átomo ou conjunto
+de átomos que ligados à cadeia carbônica dão
+reatividade característica à molécula.
+
+O
+nitrogênio
+encontra-se ligado
+a um carbono por
+uma ligação tripla:
+
+1. Introdução:
+
+Nitrocom Apresentam o grupo
+nitro -NO2.
+postos
+
+2. Principais Funções Orgânicas.
+
+Funções
+
+Como identificar
+
+Grupo
+Funcional
+
+Exemplo
+Haletos São derivados de um
+pela
+de alquila hidrocarboneto
+substituição de um
+
+Álcoois
+
+Apresentam o grupo
+-OH (hidroxila) ligado a
+carbono saturado.
+
+Fenóis
+
+Apresentam a hidroxila
+ligada a um carbono do
+anel aromático.
+
+Haletos
+de Acila
+
+Éteres
+
+Apresentam
+um
+heteroátomo
+de
+Oxigênio
+entre
+2
+carbonos na molécula.
+
+São derivados de um
+Ácido
+Carboxílico
+pela substituição do
+grupo
+(OH)
+por
+halogênio (X = F, Cl,
+Br ou I)
+
+Anidrido
+
+São
+compostos
+resultantes
+da
+desidratação
+dos
+ácidos carboxílicos e
+bem mais reativos
+que os ácidos que o
+deram origem
+
+Enóis
+
+São todos os compostos
+orgânicos que
+apresentam um ou mais
+radicais hidroxila (OH) ligados à átomos
+de carbono insaturados.
+
+Aldeídos
+
+Apresenta um
+grupamento H—C=O
+(formila ou formilo),
+ligado a um radical
+alifático ou aromático
+
+Cetonas
+
+Apresentam o grupo
+carbonila(C=O)
+ligado a 2 átomos de
+carbono.
+
+Ésteres
+
+Apresenta um grupo
+funcioal com dois
+oxigênios, uma
+carbonila e outro
+ligado a um radical.
+(carbono)
+
+Apresentam o grupo
+Ácidos
+juntamente
+Carboxílic carboxila.,
+com um grupo hidroxila
+os
+ligado
+ao
+mesmo
+carbono.
+
+Amina
+
+As
+aminas
+são
+compostos
+que
+contem nitrogênio
+na sua estrutura e é
+derivado do gás
+amoníaco, NH3.
+
+Química II( Orgânica)
+
+hidrogênio
+por
+halogênio (X = F, Cl,
+Br ou I)
+
+R – CH = CH
+– OH
+
+3. Um pouco mais sobre as funções orgânicas
+3.1 Álcool
+Para identificar um álcool, basta olhar se a cadeia
+apresenta um grupo Hidroxila(-OH). O álcool
+utilizado como combustível é o mesmo que está
+presente na bebida alcoólica, e que também é
+comprado nas farmácias para esterilização. Existem
+vários álcoois encontrados na natureza e que são de
+grande importância econômica. Podemos citar o
+mentol, que é utilizado nas balas de menta, e mais
+recentemente tem sido empregado pela indústria de
+tabaco. Outro álcool muito utilizado é o citronelol,
+que é o responsável pelo odor característico do
+eucalipto.
+CEASM
+
+1
+
+FUNÇÕES ORGÂNICAS
+
+Prof: Anderson Oliveira
+
+contendo o grupo funcional –O–O– . Como os
+peróxidos são geralmente muito explosivos, os éteres
+devem ser manipulados cuidadosamente.
+Nomenclatura:
+
+Nomenclatura:
+
+A palavra éter seguida do nome dos dois radicais em
+ordem alfabética, com a terminação “ico”. A
+nomenclatura IUPAC é mais complicada e raramente
+usada para os éteres simples. Assim, o éter etil
+metílico é chamado metoxietano pela IUPAC.
+
+Os álcoois devem apresentar a terminação –ol. Outra
+nomenclatura muito utilizada é a formal, que basta
+escrever a palavra “álcool”, seguida do nome da cadeia à Ex:
+qual o grupo hidroxila está ligado, adicionando a
+terminação “ico”.
+EX:
+
+CH3-O-CH2-CH3
+
+3.4 Aldeídos
+
+Aldeído é um composto químico orgânico que se
+caracteriza pela presença, em sua estrutura, do
+grupamento H—C=O (formila ou formilo), ligado a
+um radical alifático ou aromático.A palavra aldeído é
+formada pelo prefi xo “al”, que provém de álcool,
+e “deído”, que provém de desidrogenado, uma vez
+que a oxidação de álcoois primários para a obtenção
+de aldeídos vem da desidrogenação destes. Os
+3.2 Fenóis
+aldeídos podem ser classifi cados em alifáticos ou
+Os compostos em que o grupamento hidroxílico se liga aromáticos. Aldeídos alifáticos são os que têm o
+diretamente a um anel aromático, não são álcoois, são grupo carbonila ligado a um grupo alquila, enquanto
+os aldeídos aromáticos são os que têm o grupo
+fenóis e diferem das propriedades dos álcoois
+pronunciadamente. Muito corrosivo, causa queimaduras carbonila ligado a um grupo arila.
+severas à pele e aos tecidos. Uma solução a 2% é usada
+como germicida para desinfetar instrumentos médicos.
+Nomenclatura:
+A palavra hidróxi deve ser colocada antes do nome do
+hidrocarboneto aromático.
+Nomenclatura:
+Na nomenclatura ofi cial da União Internacional de
+Química Pura e Aplicada (Iupac) dos aldeídos
+alifáticos, é empregado o nome do hidrocarboneto
+correspondente, substituindo-se a letra fi nal “o” pelo
+Hidróxibenzeno ou fenol comum.
+sufi xo “al”.
+Nos compostos que apresentam ramificações,
+considera-se como principal a cadeia que contém o
+3.3 Éteres
+grupo funcional, iniciando-se nela a numeração.
+Apresentam um molécula de Oxigênio entre 2 carbonos Frequentemente costumam-se designar os aldeídos
+na molécula. Os éteres são relativamente estáveis relacionandoos com os ácidos carboxílicos
+quimicamente e não reagem geralmente com ácidos, correspondentes.A palavra ácido é substituída pelo
+bases ou metais ativos. Eles têm uma tendência, porém, vocábulo aldeído (por exemplo, aldeído fórmico,
+de se oxidarem lentamente a peróxidos, compostos aldeído acético, aldeído propiônico, etc.).
+Química II( Orgânica)
+
+CEASM
+
+2
+
+FUNÇÕES ORGÂNICAS
+A inversão, nesses casos, é também muito usada (por
+exemplo, formaldeído, acetaldeído, propionaldeído,
+etc.).
+
+Prof: Anderson Oliveira
+
+3.5 Cetonas
+Em uma cetona, a carbonila está ligada a dois grupos
+alquila (R1 e R2);
+
+Estrutura de uma cetona
+As cetonas são obtidas, normalmente, da oxidação de
+álcoois secundários. Um átomo de hidrogênio (ligado
+ao
+oxigênio) é retirado e o átomo de oxigênio passa a
+fazer uma ligação dupla com o carbono da cadeia.
+Nomenclatura:
+Dentre os aldeídos aromáticos, o mais simples é
+denominado benzaldeído. Os derivados do benzaldeído,
+resultantes da monossubstituição de um dos hidrogênios
+do anel benzênico por um grupo funcional qualquer, são
+indicados de maneira usual pelos prefi xos orto (o),
+meta (m) e para (p). Alguns deles, entretanto, têm
+nomes próprios, como observamos a seguir:
+
+Na nomenclatura oficial da Iupac, as cetonas
+derivam-se dos nomes dos hidrocarbonetos,
+adicionando-se o sufi xo -ona ao nome da maior
+cadeia de carbono que contenha o grupo carbonila. A
+localização do grupo carbonila é dada pelo menor
+número possível, o qual é colocado antes do nome
+principal, ou antes do sufi xo -ona, quando é
+necessário usar outros sufi xos. A seguir, seguem
+alguns exemplos:
+
+Os aldeídos são os representantes mais cheirosos usados
+na confecção de perfumes. O citral é um dos
+Ps. dentro do parênteses nomenclatura vulgar, fora
+componentes mais usados em perfumes. Seu odor cítrico
+desta nomenclatura oficial IUPAC.
+é na verdade uma mistura de dois aldeídos isoméricos: o
+geranial e o neral.
+Esse outro tipo de nomenclatura: a vulgar. A
+nomenclatura vulgar das cetonas é feita pela adição
+dos nomes dos radicais hidrocarboneto (por ordem de
+tamanho da cadeia), ligados à carbonila, ao termo
+cetona “(radical menor)-(radical maior)-cetona”
+
+Química II( Orgânica)
+
+CEASM
+
+3
+
+FUNÇÕES ORGÂNICAS
+
+Prof: Anderson Oliveira
+
+A nomenclatura simples das cetonas.
+Nomenclatura:
+A acetona é um solvente muito conhecido porque
+era muito empregado na remoção de esmaltes de unha.
+Até que sua comercialização foi proibida pela Polícia
+Federal para impedir o uso desse solvente na produção
+de cocaína.
+
+O nome dos ésteres é composto pelo nome do ácido
+carboxílico, substituindo o sufi xo -ico por -ato, e
+pelo nome do grupo proveniente do álcool com a
+terminação -ila.
+Ex:
+
+A acetona é importante também em termos médicos,
+porque se trata de um dos corpos cetônicos. Os corpos
+cetônicos são três substâncias solúveis em água que são
+produtos derivados da quebra dos ácidos graxos no
+Os nomes vulgares dos ésteres são formados da
+fígado e no rim. São usados como fonte de energia no
+coração e no cérebro. No cérebro, é fonte vital de energia mesma forma empregando, porém, a nomenclatura
+vulgar do ácido carboxílico de origem.
+durante o jejum.
+Além de seu uso na indústria de perfumaria, essa mistura
+de aldeídos também é empregada na indústria
+alimentícia para reforçar o sabor limão das balas e outros
+comestíveis. A importância dos aldeídos na confecção de
+perfumes é tão grande que uma das famílias olfativas é
+denominada aldeídica. Os aldeídos participam de todos
+os níveis das notas dos perfumes. Estas notas estão
+relacionadas com o tempo de evaporação das substâncias
+que compõem os perfumes. Notas de cabeça, coração e
+Os ésteres voláteis possuem aromas
+fundo são dadas de acordo com a volatilidade de cada
+característicos de frutas, flores e aromatizantes artifi
+substância formadora do perfume.
+ciais. À medida que a massa molecular aumenta, eles
+vão se tornando líquidos viscosos (óleos vegetais e
+3.6 Ésteres
+animais) e os de massa molecular muito elevada são
+sólidos (gorduras e ceras).
+Os ésteres, assim como os aldeídos e as cetonas,
+caracterizam-se pela presença de um grupamento
+carbonila (C=O). Entretanto, um dos ligantes da
+carbonila é outro átomo de oxigênio. Esse oxigênio é
+denominado oxigênio éter. Os ésteres podem ser
+formados através da reação de condensação entre duas
+moléculas, uma de ácido carboxílico e outra de álcool,
+com perda de água. A essa reação damos o nome de
+reação de esterificação.
+
+Reação de esterificação.
+Química II( Orgânica)
+
+CEASM
+
+4
+
+FUNÇÕES ORGÂNICAS
+Os ésteres mais comuns que se encontram na natureza
+são as gorduras e os óleos vegetais, que são ésteres de
+glicerol denominados atualmente de triacilgliceróis.
+Antigamente, eles eram chamados de triglicerídeos.
+
+Prof: Anderson Oliveira
+
+Vale ressaltar que o nome ofi cial raramente é usado
+para ácidos com menos de 5 carbonos.
+EX:
+
+Nomenclatura oficial: ácido etanoico.
+Nomenclatura usual: ácido acético (do latim acetum,
+que significa azedo).
+
+(a) glicerol e (b) triacilglicerol. Os grupos R1 , R2 e R3 são
+normalmente grupos de alquila de cadeia longa. Eles podem ainda
+conter ligações duplas carbonocarbono. Normalmente, num
+triacilglicerol, os grupos R1 , R2 e R3 são diferentes.
+
+Nomenclatura oficial: ácido pentanoico.
+Nomenclatura usual: ácido valérico.
+Os nomes oficiais normalmente não são muito usados
+para os ácidos de menos de 5 carbonos. Por outro
+lado, nem todos os ácidos com ramifi cações
+ou ligações duplas possuem nomenclatura usual.
+
+o biodiesel é composto de ésteres gerados a partir da
+reação de um triacilglicerol com um álcool,
+normalmente o metanol, na presença de um catalisador.
+Esses triacilgliceróis estão presentes nas gorduras animal Muitos ácidos carboxílicos comuns foram conhecidos
+e/ou vegetal, e portanto renováveis, fazendo com que o após o isolamento de fontes naturais, como por
+exemplo as gorduras. Por isso, muitos deles são
+biodiesel seja considerado um combustível renovável.
+chamados de ácidos graxos. Os nomes usuais
+Atualmente, tem-se utilizado em ônibus, caminhões e
+caminhonetes uma mistura do diesel comum(proveniente também foram originados a partir de sua origem
+natural. A irritação da picada de uma formiga,
+de combustíveis fósseis) e biodiesel.
+por exemplo, é causada em parte pelo ácido fórmico
+(do latim fórmica, formiga) que vem do ácido
+3.7 Ácido carboxílico
+metanoico (HCOOH); o ácido butírico (do latim
+butirum, manteiga) dá o odor característico da
+Os ácidos carboxílicos possuem um grupo carbonila
+manteiga rançosa; o ácido valérico foi isolado da raiz
+(C=O) e um grupo hidroxila (O-H) compondo um
+mesmo grupo funcional, que é denominado de carboxila da Valeriana (do latim valere, ser forte); e os ácidos
+caproicos, caprílico e cáprico são os responsáveis
+(COOH).
+pelo odor desagradável das cabras.
+Nomenclatura
+3.8 Aminas
+Embora os ácidos carboxílicos sejam muito mais
+conhecidos por seus nomes usuais, devido à sua presença As aminas são compostos derivados da amônia em
+natural no ambiente, devemos aprender como nomeá-los que um, dois ou três átomos de hidrogênio foram
+substituídos por cadeias hidrocarbônicas. De acordo
+utilizando o sistema Iupac.Nesse caso, para ácidos
+com esse grau de substituição, podem ser
+carboxílicos de estrutura mais simples,
+com os quais nos preocuparemos mais no momento, os denominadas de aminas primárias, secundárias ou
+nomes são obtidos acrescentando-se a palavra ácido ao terciárias:
+nome do hidrocarboneto correspondente e substituindose a terminação -o da maior cadeia por -oico. Caso seja
+necessário numerar a cadeia para indicar a presença de
+insaturações e/ou ramificações, o carbono da carboxila
+será sempre o átomo de carbono 1.
+Química II( Orgânica)
+
+CEASM
+
+5
+
+FUNÇÕES ORGÂNICAS
+Nomenclatura:
+Os alcanos ligados nas aminas são nomeados e
+colocados em ordem alfabética seguido da palavra
+Amina, as palavras ficam juntas, eliminando-se a letra
+“o” do radical. Aminas secundárias e terciárias são
+consideradas derivadas da amina que tiver a maior
+cadeia alquílica e utilizamos a letra N para indicar que os
+outros grupos alquila estão ligados ao átomo de
+nitrogênio. Abaixo alguns exemplos de aminas e suas
+nomenclaturas.
+Ex:
+
+No caso de aminas secundárias e terciárias, o nome dos
+radicais correspondentes às cadeias hidrocarbônicas de
+menor tamanho ligadas ao átomo de nitrogênio devem
+ser colocados antes do nome da amina (em ordem
+alfabética), adicionando N- para deixar claro que são
+substituintes do nitrogênio e não da cadeia alquila
+principal.
+
+Prof: Anderson Oliveira
+
+Aminas primárias aromáticas são conhecidas como
+anilinas, tendo papel histórico fundamental na
+indústria de corantes. Muitas delas possuem nomes
+próprios:
+
+As aminas são compostos básicos importantes na
+natureza, e podem ser encontradas em diversos
+vegetais, possuindo, em muitos casos, propriedades
+biológicas importantes. Muitas aminas foram
+isoladas a partir de fontes naturais, especialmente de
+plantas. Esses compostos nitrogenados naturais são
+denominados alcaloides quando apresentam anel
+heterocíclico nitrogenado e são derivados
+biossinteticamente de aminoácidos. Vários deles
+possuem atividades farmacológicas importantes,
+como a morfina, a cocaína e a pilocarpina.
+3.9 Amida
+Amidas são compostos em que o átomo de nitrogênio
+encontra-se ligado a uma carbonila, sendo
+consideradas derivados de ácidos carboxílicos:
+
+Quando existem, na estrutura do composto, grupos
+funcionais de maior prioridade para fins de nomenclatura
+que o grupo amino (íons, ácidos carboxílicos e
+derivados, aldeídos, cetonas e alcoóis), este é designado
+pelo prefixo amino, sempre acrescido do nome dos
+As amidas podem ser classificadas como primárias,
+radicais correspondentes às cadeias hidrocarbônicas
+secundárias ou terciárias, dependendo do número de
+ligadas ao átomo de nitrogênio:
+cadeias hidrocarbônicas ligadas ao átomo de
+nitrogênio:
+
+Química II( Orgânica)
+
+CEASM
+
+6
+
+FUNÇÕES ORGÂNICAS
+Onde:
+
+Prof: Anderson Oliveira
+
+Amidas na natureza: piperina e capsaicina
+
+R’= R" = H amida primária
+R’ = H, R" = grupo alquila ou arila amida secundária
+R’ e R" = grupo alquila ou arila amida terciária
+
+Os principais constituintes químicos da pimenta-doreino e da pimenta-malagueta são amidas,
+denominadas, respectivamente, piperina e capsaicina.
+A piperina é um alcaloide de caráter lipofílico
+Nomenclatura
+presente na pimenta-do-reino e possui diversas
+atividades farmacológicas, como anti-inflamatória,
+A nomenclatura de amidas é feita com base no ácido antifertilidade e estimuladora da biossíntese de
+carboxílico correspondente. No caso de amidas serotonina no sistema nervoso central, além de ser
+primárias, substitui-se o termo oico pelo sufixo amida.
+utilizada como inseticida.
+
+O uso mais consagrado da capsaicina, entretanto, é
+como agente ativo do chamado gás de pimenta, usado
+pelas forças policiais para o controle de situações de
+distúrbio público e agressões; quando em contato
+com mucosas, especialmente a ocular, provoca dor
+extrema.
+
+No caso de amidas secundárias e terciárias, deve-se
+colocar o nome dos radicais hidrocarbônicos ligados ao
+átomo de nitrogênio antes do nome da amida, colocando
+a letra N- antes do nome do radical, de forma a deixar
+claro que esse é um substituinte do nitrogênio amídico e
+não da cadeia hidrocarbônica da amida:
+
+3.10
+
+Nitrocomposto
+
+As Amidas derivados de anilinas são conhecidas como Compostos que contem o grupamento nitro, NO-, e
+ligados a um composto orgânico, são chamados de
+anilidas:
+nitro compostos. Abaixo alguns exemplos desses
+compostos.
+NO
+NO
+NO
+
+Química II( Orgânica)
+
+CEASM
+
+7
+
+FUNÇÕES ORGÂNICAS
+
+Prof: Anderson Oliveira
+
+Nomenclatura:
+
+Nitrilas têm seus nomes vulgares derivados do ácido
+carboxílico correspondente, substituindo o sufixo ico
+A nomenclatura de nitrocompostos é muito parecida com pelo sufixo nitrila; por uma questão de sonoridade,
+ss dos halogeneto de alquila. Estabelece-se a cadeia inclui-se a letra o entre o radical do nome e esse
+principal que contenha o grupamento nitro, e escrevemos sufixo:
+a palavra nitro seguida do hidrocarboneto. É imperativo
+que se indique qual carbono o grupamento nitro está
+ligado.
+NO
+NO
+
+ON
+
+NO
+
+A acrilonitrila é a nitrila derivada do ácido acrílico; é
+3-Metil-1,2-dinitrocicloexano uma matéria-prima importantíssima na indústria de
+polímeros. Uma das suas aplicações é a síntese da
+3.11
+Nitrilas
+poliacrilonitrila (PAN), um polímero empregado na
+produção de fibras têxteis que vem sendo estudado
+Nitrila é o composto em que o nitrogênio encontra-se para a produção de músculos artificiais, devido à sua
+ligado a um carbono por uma ligação tripla:
+propriedade condutora de eletricidade. A acrilonitrila
+também é empregada na obtenção de um copolímero
+com butadieno e estireno (ABS), de alta resistência e
+fundamental para a indústria automotiva.
+Nomenclatura:
+
+2-Metil-1-nitropropano
+
+2-Nitrohexano
+
+A nomenclatura oficial das nitrilas é dada com base no
+nome do hidrocarboneto correspondente, adicionando o 3.12 Haletos de Aquila
+sufixo nitrila:
+Os halogênios compõem a 7º família dos elementos
+representativos na tabela periódica. Essa posição lhes
+dá de fato propriedades bastante peculiares em
+relação aos demais elementos da tabela. Eles
+apresentam o maior potencial de ionização e menor
+raio atômico de seu período, em conseqüência, eles
+possuem uma maior eletronegatividade nas
+propriedades periódicas. Os halogênios apresentam a
+diferença de um elétron para terem uma configuração
+de camada similar aos gases nobres, logos, esses
+tenderão sempre a ganhar um elétron na ligação
+Quando na molécula houver outros grupos funcionais de
+iônica ou ter a nuvem eletrônica drasticamente
+maior prioridade para nomenclatura (íons, ácidos
+distorcida em volta de seu núcleo em uma ligação
+carboxílicos e derivados, ésteres, amidas), o grupo nitrila
+covalente. Os halogênios são compostos, em ordem
+será representado no nome do composto pelo prefixo
+de eletronegatividade, pelos F>Cl>Br>I>At (Flúor,
+ciano:
+Cloro, Bromo, Iodo e Astato).
+Nomenclatura:
+A nomenclatura de compostos halogenados é muito
+similar ao dos hidrocarbonetos, pois pela IUPAC
+(União Internacional de Química Pura e Aplicada),
+esses são considerados como derivados dos
+Química II( Orgânica)
+
+CEASM
+
+8
+
+FUNÇÕES ORGÂNICAS
+hidrocarbonetos. A sistemática da nomenclatura, que é
+similar ao dos hidrocarbonetos, será:
+
+Prof: Anderson Oliveira
+CCl3
+
+Cl
+
+C
+H
+
+Cl
+
+1.
+Determinação da cadeia carbônica principal,
+contendo o halogênio.
+2.
+Numeração da cadeia carbônica dando prioridade
+ao halogênio ligado a cadeia principal.
+Molécula de DDT
+3.
+Se houver mais de um átomo de halogênio ligado
+na cadeia dá-se prioridade ao de maior peso molecular.
+4.
+Ao escrever o nome do composto escrevem-se as
+ramificações em ordem alfabética.
+4. Conclusão:
+Nesta aula, foram apresentados as principais
+funções orgânicas, suas caracteristícas, suas
+aplicações e aonde podem ser encontrados na
+natureza. Sem dúvida, esta aula é um dos
+temas mais vistos e importantes no estudo da
+Química e por isso é fundamental estuda-lá.
+
+5. Referências Bibliográficas.
+Um dos principais gases que contribuem para a
+destruição da camada de ozônio é proveniente dos Silva, Joaquim Fernado Mendes da. Química V,
+gases refrigerantes CFCs e HFCs. Mas existe um v1 2. ed- Rio de Janeiro: Fundação Cecierj.
+ciclo natural que libera uma concentração de cloro
+e bromo na atmosfera e esses têm um papel no Corrêa, Rodrigo josé. Química III, v1. ed- Rio de
+equilíbrio da concentração do ozônio estratosférico. Janeiro: Fundação Cecierj.
+
+A presença de compostos halogenados, no meio
+ambiente geram efeitos adversos e são
+persistentes no meio ambiente, isto acontece pois
+a reação de quebra (clivagem) de halogeneto de
+alcano, gera halogênios radicalares (espécie
+altamente reativa) que reage com cataliticamente
+com o ozônio da camada de ozônio, destruindo –
+o, provocando diversos danos ambientais e
+também danos à saúde humana.Um dos mais
+difundidos usos de compostos organoclorados foi
+na fabricação de pesticidas, principalmente, os
+inseticidas.Outro organoclorado que é largamente
+utilizado como inseticida é o para-dicloro-difeniltricloro-etano ou DDT, o qual teve uso intenso no
+controle de mosquitos transmissores da febre
+amarela e malária, contra piolhos que transmitem a
+tifo e contra praga de pulgas.
+
+Química II( Orgânica)
+
+CEASM
+
+9
+
+

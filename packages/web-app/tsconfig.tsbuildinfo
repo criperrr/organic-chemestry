@@ -1,0 +1,1 @@
+{"root":["./src/App.tsx","./src/main.tsx","./src/components/AchievementsModal.tsx","./src/components/FeedbackCard.tsx","./src/components/HUD.tsx","./src/components/KeyboardShortcuts.tsx","./src/components/SlotBuilder.tsx","./src/components/SpeedrunnerInput.tsx","./src/components/TheoryHub.tsx","./src/db/historyDb.ts","./src/stores/useGameStore.ts"],"version":"5.9.3"}
