@@ -418,6 +418,74 @@ export class SoundSynthesizer {
   }
 
   /**
+   * Plays a crisp, satisfying procedural mechanical switch keypress sound
+   * (simulating Cherry MX Blue / Topre switch with leaf click and resonant thock).
+   */
+  public playMechanicalSwitch(): void {
+    if (this.muted) return;
+    const ctx = this.getContext();
+    if (!ctx || !this.masterGain) return;
+
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+
+    try {
+      const now = ctx.currentTime;
+
+      // 1. High-frequency leaf switch snap click (2800Hz -> 1400Hz)
+      const clickOsc = ctx.createOscillator();
+      const clickGain = ctx.createGain();
+
+      clickOsc.type = 'triangle';
+      clickOsc.frequency.setValueAtTime(2800, now);
+      clickOsc.frequency.exponentialRampToValueAtTime(1400, now + 0.004);
+
+      clickGain.gain.setValueAtTime(0.0001, now);
+      clickGain.gain.linearRampToValueAtTime(0.32, now + 0.0008);
+      clickGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.006);
+
+      clickOsc.connect(clickGain);
+      clickGain.connect(this.masterGain);
+
+      clickOsc.start(now);
+      clickOsc.stop(now + 0.008);
+
+      clickOsc.onended = () => {
+        try {
+          clickOsc.disconnect();
+          clickGain.disconnect();
+        } catch {}
+      };
+
+      // 2. Low-frequency resonant keycap body bottom-out thock (420Hz -> 180Hz)
+      const thockOsc = ctx.createOscillator();
+      const thockGain = ctx.createGain();
+
+      thockOsc.type = 'sine';
+      thockOsc.frequency.setValueAtTime(420, now);
+      thockOsc.frequency.exponentialRampToValueAtTime(180, now + 0.015);
+
+      thockGain.gain.setValueAtTime(0.0001, now);
+      thockGain.gain.linearRampToValueAtTime(0.24, now + 0.001);
+      thockGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.018);
+
+      thockOsc.connect(thockGain);
+      thockGain.connect(this.masterGain);
+
+      thockOsc.start(now);
+      thockOsc.stop(now + 0.02);
+
+      thockOsc.onended = () => {
+        try {
+          thockOsc.disconnect();
+          thockGain.disconnect();
+        } catch {}
+      };
+    } catch {}
+  }
+
+  /**
    * Plays a bright, sparkling speed bonus chime when answer is submitted in < 4s.
    * Fast 4-note ascending bell chime (E6 -> G#6 -> B6 -> E7).
    */

@@ -74,6 +74,7 @@ describe('SoundSynthesizer in Node/SSR Environment', () => {
     expect(() => synth.playError()).not.toThrow();
     expect(() => synth.playSnap()).not.toThrow();
     expect(() => synth.playClick()).not.toThrow();
+    expect(() => synth.playMechanicalSwitch()).not.toThrow();
     expect(() => synth.playSpeedBonus()).not.toThrow();
     expect(() => synth.playMilestone(5)).not.toThrow();
     expect(() => synth.playMilestone(10)).not.toThrow();

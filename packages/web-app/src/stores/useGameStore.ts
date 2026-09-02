@@ -219,6 +219,8 @@ export interface GameStore {
   recentlyUnlockedBadge: Badge | null;
   levelUpNotice: LevelUpNotice | null;
   isAchievementsModalOpen: boolean;
+  isCheatsheetOpen: boolean;
+  quickRadicalMode: { active: boolean; locant?: string };
 
   // Modality & View
   inputMode: InputMode;
@@ -246,6 +248,7 @@ export interface GameStore {
   setSlotState: (slots: Partial<SlotBuilderState>) => void;
   addRadicalChip: (radical: string, locant?: string) => void;
   removeRadicalChip: (id: string) => void;
+  popLastRadicalChip: () => void;
   clearSlotState: () => void;
   toggleInputMode: () => void;
   setActiveTab: (tab: ActiveTab) => void;
@@ -254,8 +257,12 @@ export interface GameStore {
   toggleSound: () => void;
   playSnapSound: () => void;
   playClickSound: () => void;
+  playMechanicalKeySound: () => void;
   openAchievementsModal: () => void;
   closeAchievementsModal: () => void;
+  toggleCheatsheet: () => void;
+  closeCheatsheet: () => void;
+  setQuickRadicalMode: (mode: { active: boolean; locant?: string }) => void;
   dismissBadgeToast: () => void;
   dismissLevelUpNotice: () => void;
   resetSession: () => void;
@@ -286,6 +293,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   recentlyUnlockedBadge: null,
   levelUpNotice: null,
   isAchievementsModalOpen: false,
+  isCheatsheetOpen: false,
+  quickRadicalMode: { active: false },
 
   inputMode: 'speedrunner',
   activeTab: 'arcade',
@@ -651,10 +660,25 @@ export const useGameStore = create<GameStore>((set, get) => ({
     });
   },
 
+  popLastRadicalChip: () => {
+    const { soundEnabled } = get();
+    if (soundEnabled) soundSynth.playMechanicalSwitch();
+    set((state) => {
+      if (state.slotState.radicals.length === 0) return {};
+      const updatedRadicals = state.slotState.radicals.slice(0, -1);
+      const updated = { ...state.slotState, radicals: updatedRadicals };
+      return {
+        slotState: updated,
+        userInput: assembleIUPACFromSlots(updated),
+      };
+    });
+  },
+
   clearSlotState: () => {
     set({
       slotState: { ...INITIAL_SLOT_STATE },
       userInput: '',
+      quickRadicalMode: { active: false },
     });
   },
 
@@ -699,6 +723,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (soundEnabled) soundSynth.playClick();
   },
 
+  playMechanicalKeySound: () => {
+    const { soundEnabled } = get();
+    if (soundEnabled) soundSynth.playMechanicalSwitch();
+  },
+
   openAchievementsModal: () => {
     const { soundEnabled } = get();
     if (soundEnabled) soundSynth.playClick();
@@ -709,6 +738,24 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const { soundEnabled } = get();
     if (soundEnabled) soundSynth.playClick();
     set({ isAchievementsModalOpen: false });
+  },
+
+  toggleCheatsheet: () => {
+    const { soundEnabled, isCheatsheetOpen } = get();
+    if (soundEnabled) soundSynth.playClick();
+    set({ isCheatsheetOpen: !isCheatsheetOpen });
+  },
+
+  closeCheatsheet: () => {
+    const { soundEnabled } = get();
+    if (soundEnabled) soundSynth.playClick();
+    set({ isCheatsheetOpen: false });
+  },
+
+  setQuickRadicalMode: (mode: { active: boolean; locant?: string }) => {
+    const { soundEnabled } = get();
+    if (soundEnabled) soundSynth.playMechanicalSwitch();
+    set({ quickRadicalMode: mode });
   },
 
   dismissBadgeToast: () => {

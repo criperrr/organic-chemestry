@@ -5,6 +5,7 @@ import { SlotBuilder } from './components/SlotBuilder.js';
 import { FeedbackCard } from './components/FeedbackCard.js';
 import { TheoryHub } from './components/TheoryHub.js';
 import { KeyboardShortcuts } from './components/KeyboardShortcuts.js';
+import { KeyboardCheatsheetModal } from './components/KeyboardCheatsheetModal.js';
 import { SmilesCanvas } from '@quimicarush/smiles-renderer';
 import { soundSynth } from '@quimicarush/gamification-engine';
 import { useGameStore } from './stores/useGameStore.js';
@@ -27,6 +28,7 @@ export const App: React.FC = () => {
     streak,
     multiplier,
     isFeverActive,
+    toggleCheatsheet,
   } = useGameStore();
 
   const isOnFire = isFeverActive || streak >= 10 || multiplier >= 3.0;
@@ -56,8 +58,9 @@ export const App: React.FC = () => {
         screenShake ? 'animate-shake' : ''
       }`}
     >
-      {/* Global Hotkeys listener */}
+      {/* Global Hotkeys listener & Cheatsheet Modal */}
       <KeyboardShortcuts />
+      <KeyboardCheatsheetModal />
 
       {/* Arcade High-Contrast HUD Header */}
       <HUD />
@@ -154,20 +157,24 @@ export const App: React.FC = () => {
           {/* Keyboard Hotkeys Bar */}
           <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 font-mono">
             <span className="text-slate-400">Atalhos Globais:</span>
+            <button
+              type="button"
+              onClick={toggleCheatsheet}
+              className="bg-cyan-950 hover:bg-cyan-900 px-2 py-0.5 rounded border border-cyan-500/50 text-cyan-300 font-bold flex items-center gap-1 transition-all cursor-pointer"
+            >
+              <span>[?] Comandos Mouse-Free</span>
+            </button>
             <span className="bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700 text-slate-300">
               [Tab] Modo
             </span>
             <span className="bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700 text-slate-300">
-              [Enter] Submeter / Avançar
+              [Enter] Submeter
             </span>
             <span className="bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700 text-slate-300">
-              [Esc] Limpar
+              [Space] Avançar
             </span>
             <span className="bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700 text-slate-300">
-              [1-4] Dificuldade
-            </span>
-            <span className="bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700 text-slate-300">
-              [M] Áudio
+              [V] Abas
             </span>
           </div>
 
