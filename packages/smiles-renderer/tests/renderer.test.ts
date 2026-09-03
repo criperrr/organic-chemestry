@@ -191,6 +191,9 @@ describe('SmilesDrawer Options and Initialization Logic', () => {
     const opts = createDrawerOptions();
     expect(opts.width).toBe(320);
     expect(opts.height).toBe(240);
+    expect(opts.bondLength).toBe(30);
+    expect(opts.bondSpacing).toBeGreaterThan(opts.bondThickness!);
+    expect(opts.bondSpacing).toBeCloseTo(5.1, 1);
     expect(opts.overlapResolutionIterations).toBe(1);
     expect(opts.terminalCarbons).toBe(true);
     expect(opts.isomeric).toBe(true);

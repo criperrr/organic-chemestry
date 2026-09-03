@@ -152,13 +152,14 @@ export interface DrawerOptions {
  * Creates tuned SmilesDrawer options with high-performance defaults (< 2ms render target).
  */
 export function createDrawerOptions(overrides: Partial<DrawerOptions> = {}): DrawerOptions {
+  const bondLength = overrides.bondLength ?? 30;
   return {
     width: overrides.width ?? 320,
     height: overrides.height ?? 240,
     bondThickness: overrides.bondThickness ?? 1.4,
-    bondLength: overrides.bondLength ?? 16,
-    shortBondLength: overrides.shortBondLength ?? 0.85,
-    bondSpacing: overrides.bondSpacing ?? 0.18,
+    bondLength,
+    shortBondLength: overrides.shortBondLength ?? 0.8,
+    bondSpacing: overrides.bondSpacing ?? (0.17 * bondLength),
     atomVisualization: overrides.atomVisualization ?? 'default',
     isomeric: overrides.isomeric ?? true,
     debug: overrides.debug ?? false,
@@ -168,8 +169,8 @@ export function createDrawerOptions(overrides: Partial<DrawerOptions> = {}): Dra
     // Limit iterations to 1 for sub-2ms real-time responsiveness
     overlapResolutionIterations: overrides.overlapResolutionIterations ?? 1,
     compactDrawing: overrides.compactDrawing ?? false,
-    fontSizeLarge: overrides.fontSizeLarge ?? 7,
-    fontSizeSmall: overrides.fontSizeSmall ?? 5,
+    fontSizeLarge: overrides.fontSizeLarge ?? 8,
+    fontSizeSmall: overrides.fontSizeSmall ?? 4,
     padding: overrides.padding ?? 12,
     themes: {
       dark: darkTheme,

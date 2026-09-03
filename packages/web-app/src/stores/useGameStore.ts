@@ -27,9 +27,32 @@ import {
   type LevelProgress,
 } from '@quimicarush/gamification-engine';
 import { historyDb } from '../db/historyDb.js';
+import { haptics } from '../utils/haptics.js';
 
 export type InputMode = 'speedrunner' | 'slotBuilder';
 export type ActiveTab = 'arcade' | 'theory';
+
+export type MonetPaletteId = 'emerald' | 'blue' | 'purple' | 'amber' | 'rose' | 'slate';
+
+export interface MonetPaletteInfo {
+  id: MonetPaletteId;
+  name: string;
+  seedHex: string;
+  tooltip: string;
+}
+
+export const MONET_PALETTES: MonetPaletteInfo[] = [
+  { id: 'emerald', name: 'Clorofila', seedHex: '#10b981', tooltip: 'Clorofila (Verde Menta)' },
+  { id: 'blue', name: 'Oceano', seedHex: '#0284c7', tooltip: 'Oceano (Azul Pixel)' },
+  { id: 'purple', name: 'Ametista', seedHex: '#7c3aed', tooltip: 'Ametista (Violeta)' },
+  { id: 'amber', name: 'Terracota', seedHex: '#ea580c', tooltip: 'Terracota (Âmbar)' },
+  { id: 'rose', name: 'Peônia', seedHex: '#e11d48', tooltip: 'Peônia (Coral / Rosa)' },
+  { id: 'slate', name: 'Titânio', seedHex: '#475569', tooltip: 'Titânio (Grafite / Slate)' },
+];
+
+function getInitialMonetTheme(): MonetPaletteId {
+  return 'slate';
+}
 
 export interface RadicalChip {
   id: string;
@@ -220,6 +243,8 @@ export interface GameStore {
   levelUpNotice: LevelUpNotice | null;
   isAchievementsModalOpen: boolean;
   isCheatsheetOpen: boolean;
+  isMobileControlSheetOpen: boolean;
+  isMoleculeZoomOpen: boolean;
   quickRadicalMode: { active: boolean; locant?: string };
 
   // Modality & View
@@ -235,12 +260,14 @@ export interface GameStore {
 
   // Settings & Filters
   soundEnabled: boolean;
+  monetTheme: MonetPaletteId;
   difficultyFilter: DifficultyTier | 'todos';
   functionFilter: OrganicFunction | 'todos';
 
   // Actions
   initSession: () => void;
   loadBadgesFromDb: () => Promise<void>;
+  setMonetTheme: (theme: MonetPaletteId) => void;
   submitAnswer: () => void;
   retryQuestion: () => void;
   nextQuestion: () => void;
@@ -262,6 +289,11 @@ export interface GameStore {
   closeAchievementsModal: () => void;
   toggleCheatsheet: () => void;
   closeCheatsheet: () => void;
+  openMobileControlSheet: () => void;
+  closeMobileControlSheet: () => void;
+  toggleMobileControlSheet: () => void;
+  openMoleculeZoom: () => void;
+  closeMoleculeZoom: () => void;
   setQuickRadicalMode: (mode: { active: boolean; locant?: string }) => void;
   dismissBadgeToast: () => void;
   dismissLevelUpNotice: () => void;
@@ -294,6 +326,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   levelUpNotice: null,
   isAchievementsModalOpen: false,
   isCheatsheetOpen: false,
+  isMobileControlSheetOpen: false,
+  isMoleculeZoomOpen: false,
   quickRadicalMode: { active: false },
 
   inputMode: 'speedrunner',
@@ -306,8 +340,21 @@ export const useGameStore = create<GameStore>((set, get) => ({
   autoAdvanceTimer: null,
 
   soundEnabled: true,
+  monetTheme: getInitialMonetTheme(),
   difficultyFilter: 'todos',
   functionFilter: 'todos',
+
+  setMonetTheme: (theme: MonetPaletteId) => {
+    try {
+      localStorage.setItem('quimicarush_theme', theme);
+    } catch {}
+    if (typeof document !== 'undefined') {
+      document.documentElement.setAttribute('data-theme', theme);
+    }
+    const { soundEnabled } = get();
+    if (soundEnabled) soundSynth.playClick();
+    set({ monetTheme: theme });
+  },
 
   loadBadgesFromDb: async () => {
     try {
@@ -320,7 +367,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   initSession: () => {
-    const { difficultyFilter, functionFilter } = get();
+    const { difficultyFilter, functionFilter, monetTheme } = get();
+
+    // Ensure document attribute is set
+    if (typeof document !== 'undefined') {
+      document.documentElement.setAttribute('data-theme', monetTheme);
+    }
+
     const molecules = loadMoleculesForFilter(difficultyFilter, functionFilter);
 
     const newQueue = new FSRSQueue<Molecule>([], { passThreshold: 0.8, reinsertOffset: 3 });
@@ -410,7 +463,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
     // Update FSRS repetition queue
     queue.recordReview(evalResult.score);
 
-    // Sound feedback
+    // Sound and haptic feedback
+    if (isSuccess) {
+      if (leveledUp) {
+        haptics.levelUp();
+      } else {
+        haptics.success();
+      }
+    } else {
+      haptics.error();
+    }
+
     if (soundEnabled) {
       soundSynth.playAnswerFeedback(isSuccess, newStreak, isSpeedBlitz);
       if (leveledUp) {
@@ -629,6 +692,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   addRadicalChip: (radical: string, locant: string = '') => {
     const { soundEnabled } = get();
+    haptics.tap();
     if (soundEnabled) soundSynth.playSnap();
 
     set((state) => {
@@ -648,6 +712,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   removeRadicalChip: (id: string) => {
     const { soundEnabled } = get();
+    haptics.tap();
     if (soundEnabled) soundSynth.playSnap();
 
     set((state) => {
@@ -662,6 +727,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   popLastRadicalChip: () => {
     const { soundEnabled } = get();
+    haptics.tap();
     if (soundEnabled) soundSynth.playMechanicalSwitch();
     set((state) => {
       if (state.slotState.radicals.length === 0) return {};
@@ -750,6 +816,39 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const { soundEnabled } = get();
     if (soundEnabled) soundSynth.playClick();
     set({ isCheatsheetOpen: false });
+  },
+
+  openMobileControlSheet: () => {
+    const { soundEnabled } = get();
+    if (soundEnabled) soundSynth.playClick();
+    haptics.tap();
+    set({ isMobileControlSheetOpen: true });
+  },
+
+  closeMobileControlSheet: () => {
+    const { soundEnabled } = get();
+    if (soundEnabled) soundSynth.playClick();
+    set({ isMobileControlSheetOpen: false });
+  },
+
+  toggleMobileControlSheet: () => {
+    const { isMobileControlSheetOpen, soundEnabled } = get();
+    if (soundEnabled) soundSynth.playClick();
+    haptics.tap();
+    set({ isMobileControlSheetOpen: !isMobileControlSheetOpen });
+  },
+
+  openMoleculeZoom: () => {
+    const { soundEnabled } = get();
+    if (soundEnabled) soundSynth.playClick();
+    haptics.tap();
+    set({ isMoleculeZoomOpen: true });
+  },
+
+  closeMoleculeZoom: () => {
+    const { soundEnabled } = get();
+    if (soundEnabled) soundSynth.playClick();
+    set({ isMoleculeZoomOpen: false });
   },
 
   setQuickRadicalMode: (mode: { active: boolean; locant?: string }) => {

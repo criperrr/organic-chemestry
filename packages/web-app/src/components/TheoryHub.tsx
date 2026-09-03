@@ -923,11 +923,11 @@ export const TheoryHub: React.FC = () => {
           </p>
         </div>
 
-        {/* Tab Selector Pills */}
-        <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-xl bg-slate-900/90 border border-slate-700/80">
+        {/* Tab Selector Pills (Horizontally swipeable on mobile) */}
+        <div className="flex overflow-x-auto no-scrollbar items-center gap-1.5 p-1 rounded-xl bg-slate-900/90 border border-slate-700/80 max-w-full touch-pan-x">
           <button
             onClick={() => setActiveTab('compendium')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`shrink-0 px-3 py-2 sm:py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 min-h-[38px] ${
               activeTab === 'compendium'
                 ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
                 : 'text-slate-300 hover:text-white'
@@ -939,7 +939,7 @@ export const TheoryHub: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('locant_battle')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`shrink-0 px-3 py-2 sm:py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 min-h-[38px] ${
               activeTab === 'locant_battle'
                 ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
                 : 'text-slate-300 hover:text-white'
@@ -951,7 +951,7 @@ export const TheoryHub: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('enem_macetes')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`shrink-0 px-3 py-2 sm:py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 min-h-[38px] ${
               activeTab === 'enem_macetes'
                 ? 'bg-purple-500 text-slate-950 shadow-md shadow-purple-500/20'
                 : 'text-slate-300 hover:text-white'
@@ -963,7 +963,7 @@ export const TheoryHub: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('sensory_guide')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`shrink-0 px-3 py-2 sm:py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 min-h-[38px] ${
               activeTab === 'sensory_guide'
                 ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
                 : 'text-slate-300 hover:text-white'
@@ -1046,9 +1046,42 @@ export const TheoryHub: React.FC = () => {
           </div>
 
           {/* Main Content: Left Function Selector Pills & Right Detailed Card */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-            {/* Left Column: 16 Function Buttons */}
-            <div className="lg:col-span-4 flex flex-col gap-2 max-h-[620px] overflow-y-auto pr-1">
+          <div className="flex flex-col lg:grid lg:grid-cols-12 gap-4 sm:gap-5">
+            {/* Mobile Function Selector Horizontal Rail (< lg) */}
+            <div className="flex lg:hidden flex-col gap-1.5 w-full">
+              <div className="flex items-center justify-between px-1">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  As 16 Classes Canônicas ({filteredFunctions.length})
+                </span>
+                <span className="text-[10px] text-cyan-400 font-mono">
+                  Role horizontalmente →
+                </span>
+              </div>
+              <div className="flex overflow-x-auto no-scrollbar gap-2 py-1 px-1 touch-pan-x -mx-1">
+                {filteredFunctions.map((item) => {
+                  const isSelected = selectedFunction.id === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => setSelectedFunction(item)}
+                      className={`shrink-0 px-3 py-2 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 min-h-[44px] cursor-pointer ${
+                        isSelected
+                          ? 'bg-gradient-to-r from-cyan-950 to-blue-950 border-cyan-400 text-white shadow-md shadow-cyan-500/20'
+                          : 'bg-slate-900/80 border-slate-800 text-slate-300 active:bg-slate-800'
+                      }`}
+                    >
+                      <span>{item.title}</span>
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-amber-300 font-semibold">
+                        #{item.priorityRank}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Desktop Left Column: 16 Function Buttons (>= lg) */}
+            <div className="hidden lg:flex lg:col-span-4 flex-col gap-2 max-h-[620px] overflow-y-auto pr-1">
               <span className="text-xs font-bold text-slate-400 uppercase tracking-wider px-1">
                 As 16 Classes Canônicas ({filteredFunctions.length})
               </span>
@@ -1084,7 +1117,7 @@ export const TheoryHub: React.FC = () => {
             </div>
 
             {/* Right Column: Detailed Functional Card */}
-            <div className="lg:col-span-8 flex flex-col gap-4 p-6 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-2xl backdrop-blur-md">
+            <div className="lg:col-span-8 flex flex-col gap-4 p-4 sm:p-6 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-2xl backdrop-blur-md">
               {/* Header & Crown Priority Badge */}
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-4 border-b border-slate-800">
                 <div>
@@ -1236,25 +1269,25 @@ export const TheoryHub: React.FC = () => {
             </p>
           </div>
 
-          {/* Battle Selector Pills */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* Battle Selector Pills (2 columns on mobile) */}
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
             {LOCANT_BATTLES.map((battle) => {
               const isSelected = selectedBattle.id === battle.id;
               return (
                 <button
                   key={battle.id}
                   onClick={() => setSelectedBattle(battle)}
-                  className={`p-3.5 rounded-xl text-left transition-all border flex flex-col gap-1 cursor-pointer ${
+                  className={`p-2.5 sm:p-3.5 rounded-xl text-left transition-all border flex flex-col gap-1 min-h-[48px] cursor-pointer ${
                     isSelected
                       ? 'bg-gradient-to-br from-amber-950/60 to-slate-900 border-amber-500/80 shadow-lg shadow-amber-500/10'
                       : 'bg-slate-900/60 hover:bg-slate-800/60 border-slate-800 text-slate-300'
                   }`}
                 >
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 truncate">
                     {battle.categoryBadge}
                   </span>
-                  <span className="font-bold text-sm text-slate-100">{battle.title}</span>
-                  <span className="text-[11px] font-mono text-cyan-300">
+                  <span className="font-bold text-xs sm:text-sm text-slate-100 line-clamp-1">{battle.title}</span>
+                  <span className="text-[10px] sm:text-[11px] font-mono text-cyan-300 truncate">
                     {battle.winner.name.split(' ')[0]}
                   </span>
                 </button>
@@ -1263,7 +1296,7 @@ export const TheoryHub: React.FC = () => {
           </div>
 
           {/* Detailed Battle Arena Card */}
-          <div className="flex flex-col gap-5 p-6 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-2xl backdrop-blur-md">
+          <div className="flex flex-col gap-4 sm:gap-5 p-4 sm:p-6 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-2xl backdrop-blur-md">
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-4 border-b border-slate-800">
               <div>

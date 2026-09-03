@@ -2894,7 +2894,9 @@
     "commonNames": [
       "geranial",
       "trans-citral",
-      "citral A"
+      "citral A",
+      "citral",
+      "3,7-dimetilocta-2,6-dienal"
     ],
     "primaryFunction": "aldeido",
     "secondaryFunctions": [],
@@ -2910,7 +2912,9 @@
     "commonNames": [
       "neral",
       "cis-citral",
-      "citral B"
+      "citral B",
+      "citral",
+      "3,7-dimetilocta-2,6-dienal"
     ],
     "primaryFunction": "aldeido",
     "secondaryFunctions": [],

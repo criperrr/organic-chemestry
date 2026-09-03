@@ -5,7 +5,7 @@ import {
   OrganicFunction,
   PartialCreditBreakdown,
 } from './types.js';
-import { normalizeIUPACName } from './normalizer.js';
+import { normalizeIUPACName, stripStereoPrefixes } from './normalizer.js';
 import { parseIUPACName } from './parser.js';
 
 export const FUNCTION_PT_BR_NAMES: Record<OrganicFunction, string> = {
@@ -706,7 +706,8 @@ export function evaluateIUPACName(
 
   if (typeof targetInput === 'string') {
     targetNormalized = normalizeIUPACName(targetInput);
-    targetAST = parseIUPACName(targetInput);
+    const targetForParse = stripStereoPrefixes(targetNormalized) || targetInput;
+    targetAST = parseIUPACName(targetForParse);
   } else {
     targetNormalized = targetInput.rawNormalized;
     targetAST = targetInput;
@@ -732,8 +733,11 @@ export function evaluateIUPACName(
     };
   }
 
-  // Check exact normalized match
-  if (normUser === targetNormalized) {
+  // Check exact normalized match (including tolerance for optional stereodescriptors like (2E)-, (E)-, trans-)
+  const normUserNoStereo = stripStereoPrefixes(normUser);
+  const targetNoStereo = stripStereoPrefixes(targetNormalized);
+
+  if (normUser === targetNormalized || (normUserNoStereo && normUserNoStereo === targetNoStereo)) {
     const parsedUserAST = parseIUPACName(userInput);
     return {
       score: 1.0,
@@ -757,7 +761,10 @@ export function evaluateIUPACName(
   const synonymTarget = rawSynonym ? normalizeIUPACName(rawSynonym) : undefined;
   const isSynonym =
     synonymTarget === targetNormalized ||
-    acceptedSynonyms.map((s) => normalizeIUPACName(s)).includes(normUser);
+    (synonymTarget && stripStereoPrefixes(synonymTarget) === targetNoStereo) ||
+    acceptedSynonyms.map((s) => normalizeIUPACName(s)).some(
+      (s) => s === normUser || (normUserNoStereo && stripStereoPrefixes(s) === normUserNoStereo)
+    );
 
   if (isSynonym) {
     const parsedUserAST = parseIUPACName(userInput);

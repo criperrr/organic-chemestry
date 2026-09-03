@@ -167,6 +167,19 @@ export function convert1993To2013(str: string): string {
 }
 
 /**
+ * Strips stereochemical and geometric descriptors:
+ * e.g., '(2E)-', '(2Z)-', '(E)-', '(Z)-', 'cis-', 'trans-', '(R)-', '(S)-'.
+ * Also handles prefixes like 'ácido (E)-' -> 'ácido '.
+ */
+export function stripStereoPrefixes(str: string): string {
+  if (!str) return '';
+  return str
+    .replace(/^(\([0-9a-z, -]+\)|[ezrs]-|cis-|trans-)\s*-?/gi, '')
+    .replace(/\b(acido|anidrido)\s+(\([0-9a-z, -]+\)|[ezrs]-|cis-|trans-)\s*-?/gi, '$1 ')
+    .trim();
+}
+
+/**
  * Full master normalization for IUPAC names in pt-BR.
  */
 export function normalizeIUPACName(input: string): string {

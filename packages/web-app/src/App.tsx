@@ -1,11 +1,13 @@
-import React, { useEffect } from 'react';
-import { HUD } from './components/HUD.js';
+import React, { useEffect, useState } from 'react';
+import { NavigationRail, TelemetryRail, MobileTopBar, MobileControlSheet } from './components/HUD.js';
 import { SpeedrunnerInput } from './components/SpeedrunnerInput.js';
 import { SlotBuilder } from './components/SlotBuilder.js';
 import { FeedbackCard } from './components/FeedbackCard.js';
 import { TheoryHub } from './components/TheoryHub.js';
 import { KeyboardShortcuts } from './components/KeyboardShortcuts.js';
 import { KeyboardCheatsheetModal } from './components/KeyboardCheatsheetModal.js';
+import { AchievementsModal } from './components/AchievementsModal.js';
+import { MoleculeZoomModal } from './components/MoleculeZoomModal.js';
 import { SmilesCanvas } from '@quimicarush/smiles-renderer';
 import { soundSynth } from '@quimicarush/gamification-engine';
 import { useGameStore } from './stores/useGameStore.js';
@@ -13,6 +15,7 @@ import {
   Sparkles,
   Flame,
   Atom,
+  ZoomIn,
 } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -25,13 +28,20 @@ export const App: React.FC = () => {
     currentEvaluation,
     difficultyFilter,
     screenShake,
-    streak,
-    multiplier,
-    isFeverActive,
-    toggleCheatsheet,
+    openMoleculeZoom,
   } = useGameStore();
 
-  const isOnFire = isFeverActive || streak >= 10 || multiplier >= 3.0;
+  const [isMobileScreen, setIsMobileScreen] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth < 640 : false
+  );
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobileScreen(window.innerWidth < 640);
+    };
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     initSession();
@@ -54,136 +64,128 @@ export const App: React.FC = () => {
 
   return (
     <div
-      className={`min-h-screen flex flex-col bg-[#0a0b10] text-slate-100 selection:bg-cyan-500 selection:text-black transition-all ${
+      className={`min-h-screen flex flex-col bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] transition-all ${
         screenShake ? 'animate-shake' : ''
       }`}
     >
-      {/* Global Hotkeys listener & Cheatsheet Modal */}
+      {/* Global Hotkeys listener, Cheatsheet Modal, Achievements Modal, Zoom Modal & Mobile Control Sheet */}
       <KeyboardShortcuts />
       <KeyboardCheatsheetModal />
+      <AchievementsModal />
+      <MoleculeZoomModal />
+      <MobileControlSheet />
 
-      {/* Arcade High-Contrast HUD Header */}
-      <HUD />
+      {/* Mobile Top Bar (< lg only: compact 52px header with telemetry indicators) */}
+      <MobileTopBar />
 
-      {/* Main App Content */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-3 py-4 sm:px-6 sm:py-6 flex flex-col">
-        {activeTab === 'theory' ? (
-          <TheoryHub />
-        ) : (
-          <div className="flex-1 flex flex-col items-center justify-center gap-6 max-w-4xl mx-auto w-full">
-            {/* Molecule Presentation Card */}
-            {currentMolecule ? (
-              <div
-                className={`w-full flex flex-col items-center gap-3 p-4 sm:p-6 rounded-3xl bg-slate-900/60 backdrop-blur-md relative overflow-hidden transition-all duration-300 ${
-                  isOnFire
-                    ? 'border-2 border-orange-500/80 animate-fiery-aura shadow-2xl shadow-orange-950/60'
-                    : 'border border-slate-800 shadow-2xl'
-                }`}
-              >
-                {/* Ambient glow background */}
-                <div className="absolute -top-24 -left-24 w-48 h-48 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
-                <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+      {/* Distributed 3-Column Workspace (Desktop >= lg) */}
+      <div className="flex-1 flex flex-col lg:flex-row w-full min-h-0">
+        {/* Left Rail: Navigation & Tools (Desktop) */}
+        <NavigationRail />
 
-                {/* Top Badge Strip */}
-                <div className="w-full flex items-center justify-between gap-2 text-xs font-mono">
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-950/80 border border-slate-800 text-slate-300">
-                    <Atom className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>
-                      Fórmula: <strong className="text-white">{currentMolecule.formula}</strong>
-                    </span>
+        {/* Center Stage: 100% Focused on the Molecule & Interactive Input */}
+        <main className="flex-1 flex flex-col items-center justify-start lg:justify-center px-2 py-3 sm:px-6 sm:py-8 min-w-0 w-full overflow-y-auto">
+          {activeTab === 'theory' ? (
+            <div className="w-full max-w-4xl mx-auto">
+              <TheoryHub />
+            </div>
+          ) : (
+            <div className="w-full max-w-2xl xl:max-w-3xl mx-auto flex flex-col items-center gap-4 sm:gap-6">
+              {/* Molecule Presentation Stage (Material 3 Card - Clean & Serene) */}
+              {currentMolecule ? (
+                <div className="w-full flex flex-col gap-4 sm:gap-6">
+                  <div className="m3-card w-full p-4 sm:p-7 flex flex-col items-center gap-3 sm:gap-4 transition-all duration-200 shadow-sm">
+                    {/* Top Context Header */}
+                    <div className="w-full flex items-center justify-between gap-2 text-xs font-mono">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <div className="m3-chip gap-1.5 py-1 px-2.5 sm:px-3 truncate">
+                          <Atom className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)] shrink-0" />
+                          <span className="text-[10px] sm:text-[11px] text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider font-medium">Fórmula:</span>
+                          <strong className="font-bold text-[var(--md-sys-color-on-surface)]">{currentMolecule.formula}</strong>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={openMoleculeZoom}
+                          title="Ampliar visualização 2D da molécula"
+                          aria-label="Ampliar visualização 2D da molécula"
+                          className="m3-chip hover:border-[var(--md-sys-color-primary)] text-[var(--md-sys-color-primary)] py-1 px-2 flex items-center gap-1 cursor-pointer transition-colors"
+                        >
+                          <ZoomIn className="w-3.5 h-3.5" />
+                          <span className="hidden xs:inline text-[10px] font-mono font-bold uppercase">Zoom</span>
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                        <span className="m3-chip font-mono text-[10px] sm:text-[11px] uppercase tracking-wider py-1 px-2 sm:px-2.5">
+                          {currentMolecule.difficulty}
+                        </span>
+                        {difficultyFilter === 'caos' && (
+                          <span className="m3-chip bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)] border-[var(--md-sys-color-error)] font-bold font-mono text-[10px] sm:text-[11px] py-1 px-2 sm:px-2.5 flex items-center gap-1">
+                            <Flame className="w-3 h-3 text-[var(--md-sys-color-error)]" />
+                            CAOS
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* SmilesCanvas 2D Molecular Depiction (Clickable to Zoom) */}
+                    <div
+                      className="w-full flex items-center justify-center p-2 sm:p-4 my-0.5 sm:my-1 cursor-zoom-in group relative"
+                      onClick={openMoleculeZoom}
+                      title="Toque para ampliar a estrutura 2D"
+                    >
+                      <SmilesCanvas
+                        smiles={currentMolecule.smiles}
+                        width={isMobileScreen ? 320 : 380}
+                        height={isMobileScreen ? 190 : 220}
+                        theme="dark"
+                        className="max-w-full group-hover:scale-[1.01] transition-transform duration-150"
+                      />
+                      <div className="absolute bottom-1 right-2 opacity-0 group-hover:opacity-100 sm:group-hover:opacity-100 transition-opacity bg-black/60 text-white/90 text-[10px] font-mono px-2 py-0.5 rounded pointer-events-none flex items-center gap-1">
+                        <ZoomIn className="w-3 h-3" />
+                        <span>Toque p/ ampliar</span>
+                      </div>
+                    </div>
+
+                    {/* Question Header */}
+                    <div className="text-center max-w-xl mx-auto">
+                      <h2 className="text-base sm:text-xl font-bold text-[var(--md-sys-color-on-surface)] tracking-tight">
+                        Qual é a nomenclatura IUPAC oficial canônica desta estrutura?
+                      </h2>
+                      <p className="text-[11px] sm:text-xs text-[var(--md-sys-color-on-surface-variant)] mt-1 sm:mt-1.5">
+                        {inputMode === 'speedrunner'
+                          ? 'Digite a nomenclatura canônica e pressione Enter para submeter'
+                          : 'Monte o nome morfológico selecionando os blocos interativos abaixo'}
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-1 rounded-full bg-slate-950/80 border border-slate-800 text-amber-300 capitalize">
-                      {currentMolecule.difficulty}
-                    </span>
-                    {difficultyFilter === 'caos' && (
-                      <span className="px-2 py-0.5 rounded bg-red-950/80 text-red-300 border border-red-800/60 font-bold flex items-center gap-1">
-                        <Flame className="w-3 h-3 text-red-400" />
-                        CAOS
-                      </span>
+                  {/* Input Modality Form (Speedrunner or SlotBuilder) */}
+                  <div className="w-full">
+                    {inputMode === 'speedrunner' ? (
+                      <SpeedrunnerInput />
+                    ) : (
+                      <SlotBuilder />
                     )}
                   </div>
+
+                  {/* Deconstructive Partial Credit Feedback Card */}
+                  {isAnswerSubmitted && currentEvaluation && <FeedbackCard />}
                 </div>
-
-                {/* SmilesCanvas 2D Molecular Depiction */}
-                <div className="w-full flex items-center justify-center p-2 sm:p-4 rounded-2xl bg-slate-950 border border-slate-800/80 shadow-inner my-1">
-                  <SmilesCanvas
-                    smiles={currentMolecule.smiles}
-                    width={360}
-                    height={220}
-                    theme="dark"
-                    className="max-w-full"
-                  />
+              ) : (
+                <div className="p-12 text-center text-[var(--md-sys-color-on-surface-variant)] flex flex-col items-center gap-3">
+                  <Sparkles className="w-8 h-8 text-[var(--md-sys-color-primary)] animate-spin" />
+                  <p className="font-mono text-sm">Carregando moléculas canônicas...</p>
                 </div>
+              )}
+            </div>
+          )}
+        </main>
 
-                {/* Question Prompt */}
-                <div className="text-center">
-                  <h2 className="text-base sm:text-lg font-bold text-slate-200">
-                    Qual é a nomenclatura IUPAC oficial canônica desta estrutura?
-                  </h2>
-                  <p className="text-xs text-slate-400">
-                    {inputMode === 'speedrunner'
-                      ? 'Digite rapidamente e tecle Enter para submeter'
-                      : 'Monte a cadeia escolhendo os blocos morfológicos abaixo'}
-                  </p>
-                </div>
-
-                {/* Input Modality Form (Speedrunner or SlotBuilder) */}
-                <div className="w-full mt-1">
-                  {inputMode === 'speedrunner' ? (
-                    <SpeedrunnerInput />
-                  ) : (
-                    <SlotBuilder />
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="p-12 text-center text-slate-400 flex flex-col items-center gap-3">
-                <Sparkles className="w-8 h-8 text-cyan-400 animate-spin" />
-                <p>Carregando moléculas canônicas...</p>
-              </div>
-            )}
-
-            {/* Deconstructive Partial Credit Feedback Card */}
-            {isAnswerSubmitted && currentEvaluation && <FeedbackCard />}
-          </div>
-        )}
-      </main>
-
-      {/* Footer Hotkeys and Academic Attribution */}
-      <footer className="w-full border-t border-slate-800/60 bg-[#0d101a]/80 py-3 px-4 text-[11px] text-slate-400">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
-          {/* Keyboard Hotkeys Bar */}
-          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 font-mono">
-            <span className="text-slate-400">Atalhos Globais:</span>
-            <button
-              type="button"
-              onClick={toggleCheatsheet}
-              className="bg-cyan-950 hover:bg-cyan-900 px-2 py-0.5 rounded border border-cyan-500/50 text-cyan-300 font-bold flex items-center gap-1 transition-all cursor-pointer"
-            >
-              <span>[?] Comandos Mouse-Free</span>
-            </button>
-            <span className="bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700 text-slate-300">
-              [Tab] Modo
-            </span>
-            <span className="bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700 text-slate-300">
-              [Enter] Submeter
-            </span>
-            <span className="bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700 text-slate-300">
-              [Space] Avançar
-            </span>
-            <span className="bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700 text-slate-300">
-              [V] Abas
-            </span>
-          </div>
-
-          {/* Academic Source */}
-          <div className="text-slate-400">
-            Base teórica: <span className="text-slate-300 font-medium">funcoes.pdf</span> (Prof. Anderson Oliveira, CEASM/Cecierj)
-          </div>
-        </div>
-      </footer>
+        {/* Right Rail: Telemetry & Filters (Desktop) */}
+        <TelemetryRail />
+      </div>
     </div>
   );
 };
+

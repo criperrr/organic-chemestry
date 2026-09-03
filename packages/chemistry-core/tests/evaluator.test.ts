@@ -283,5 +283,19 @@ describe('Evaluator - Scoring and Partial Credit', () => {
       expect(res2.isPerfect).toBe(true);
       expect(res2.score).toBe(1.0);
     });
+
+    it('tolerates optional stereochemical descriptors (e.g. accepts 3,7-dimetilocta-2,6-dienal for (2E)-3,7-dimetilocta-2,6-dienal)', () => {
+      const resDienal = evaluateIUPACName('3,7-dimetilocta-2,6-dienal', '(2E)-3,7-dimetilocta-2,6-dienal');
+      expect(resDienal.isPerfect).toBe(true);
+      expect(resDienal.score).toBe(1.0);
+
+      const resOctanal = evaluateIUPACName('3,7-dimetiloctanal', '(2E)-3,7-dimetilocta-2,6-dienal');
+      expect(resOctanal.isPerfect).toBe(false);
+      expect(resOctanal.partialCreditBreakdown.functionScore).toBe(1.0);
+      expect(resOctanal.partialCreditBreakdown.chainScore).toBe(1.0);
+      expect(resOctanal.partialCreditBreakdown.radicalScore).toBe(1.0);
+      expect(resOctanal.partialCreditBreakdown.bondScore).toBe(0);
+      expect(resOctanal.feedbackMessages.some((m) => m.includes('-dien-'))).toBe(true);
+    });
   });
 });

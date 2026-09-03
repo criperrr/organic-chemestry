@@ -90,28 +90,28 @@ export const KeyboardCheatsheetModal: React.FC = () => {
       role="dialog"
       aria-modal="true"
       aria-labelledby="cheatsheet-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md animate-fadeIn"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/70 backdrop-blur-sm animate-fadeIn"
       onClick={closeCheatsheet}
     >
       <div
-        className="w-full max-w-3xl max-h-[90vh] flex flex-col rounded-2xl bg-slate-950 border border-cyan-500/40 shadow-2xl shadow-cyan-950/60 overflow-hidden text-slate-100"
+        className="w-full max-w-3xl max-h-[90vh] flex flex-col rounded-3xl bg-[var(--md-sys-color-surface-container)] border border-[var(--md-sys-color-outline-variant)] shadow-2xl overflow-hidden text-[var(--md-sys-color-on-surface)]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-800/80 bg-slate-900/60">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-cyan-950/60 border border-cyan-500/40 text-cyan-400 shadow-inner">
-              <Keyboard className="w-5 h-5" />
+        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)]">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]">
+              <Keyboard className="w-5 h-5 text-[var(--md-sys-color-primary)]" />
             </div>
             <div>
-              <h2 id="cheatsheet-title" className="text-base sm:text-lg font-black tracking-tight text-white flex items-center gap-2 font-mono">
-                <span>COMANDOS DE TECLADO ULTRA-RÁPIDOS</span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 uppercase font-sans">
+              <h2 id="cheatsheet-title" className="text-base sm:text-lg font-bold tracking-tight text-[var(--md-sys-color-on-surface)] flex items-center gap-2">
+                <span>Comandos de Teclado Rápidos</span>
+                <span className="m3-chip text-[10px] py-0.5 px-2 font-mono">
                   Mouse-Free
                 </span>
               </h2>
-              <p className="text-xs text-slate-400 font-sans">
-                Monte moléculas IUPAC completas com a velocidade e precisão do Neovim.
+              <p className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
+                Monte moléculas IUPAC completas com extrema velocidade e ergonomia.
               </p>
             </div>
           </div>
@@ -119,30 +119,30 @@ export const KeyboardCheatsheetModal: React.FC = () => {
           <button
             type="button"
             onClick={closeCheatsheet}
-            className="p-2 rounded-xl bg-slate-800/60 hover:bg-slate-700 text-slate-400 hover:text-white border border-slate-700/60 transition-all cursor-pointer"
+            className="p-2.5 rounded-full hover:bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface-variant)] transition-all cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center"
             aria-label="Fechar painel de atalhos"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Highlight Banner: Modo Radical */}
-        <div className="mx-4 mt-4 p-3 rounded-xl bg-gradient-to-r from-amber-950/40 via-cyan-950/30 to-purple-950/40 border border-cyan-500/30 flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-cyan-500/20 text-cyan-300 font-mono text-xs font-bold shrink-0">
+        <div className="mx-4 mt-4 p-3.5 rounded-2xl bg-[var(--md-sys-color-surface-container-high)] border border-[var(--md-sys-color-outline-variant)] flex items-center gap-3">
+          <div className="px-2.5 py-1.5 rounded-xl bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] font-mono text-xs font-bold shrink-0">
             [G]
           </div>
-          <div className="text-xs">
-            <span className="font-bold text-cyan-300 font-mono">Modo Radical Rápido: </span>
-            <span className="text-slate-300">
-              Pressione <kbd className="px-1.5 py-0.5 rounded bg-slate-800 text-amber-300 border border-slate-700 font-mono text-[11px]">G</kbd>,
-              em seguida o carbono <kbd className="px-1.5 py-0.5 rounded bg-slate-800 text-amber-300 border border-slate-700 font-mono text-[11px]">1-9</kbd>,
-              e o radical (<kbd className="px-1 py-0.5 rounded bg-slate-800 text-cyan-300 border border-slate-700 font-mono text-[10px]">m</kbd>=metil,
-              <kbd className="px-1 py-0.5 rounded bg-slate-800 text-cyan-300 border border-slate-700 font-mono text-[10px]">e</kbd>=etil,
-              <kbd className="px-1 py-0.5 rounded bg-slate-800 text-cyan-300 border border-slate-700 font-mono text-[10px]">c</kbd>=cloro,
-              <kbd className="px-1 py-0.5 rounded bg-slate-800 text-cyan-300 border border-slate-700 font-mono text-[10px]">h</kbd>=hidróxi,
-              <kbd className="px-1 py-0.5 rounded bg-slate-800 text-cyan-300 border border-slate-700 font-mono text-[10px]">o</kbd>=oxo,
-              <kbd className="px-1 py-0.5 rounded bg-slate-800 text-cyan-300 border border-slate-700 font-mono text-[10px]">a</kbd>=amino,
-              <kbd className="px-1 py-0.5 rounded bg-slate-800 text-cyan-300 border border-slate-700 font-mono text-[10px]">n</kbd>=nitro).
+          <div className="text-xs text-[var(--md-sys-color-on-surface-variant)]">
+            <strong className="font-bold text-[var(--md-sys-color-primary)] font-mono">Modo Radical Rápido: </strong>
+            <span>
+              Pressione <kbd className="px-1.5 py-0.5 rounded bg-[var(--md-sys-color-surface-container-lowest)] text-[var(--md-sys-color-on-surface)] font-mono text-[11px]">G</kbd>,
+              em seguida o carbono <kbd className="px-1.5 py-0.5 rounded bg-[var(--md-sys-color-surface-container-lowest)] text-[var(--md-sys-color-on-surface)] font-mono text-[11px]">1-9</kbd>,
+              e a tecla do radical (<kbd className="px-1 py-0.5 rounded bg-[var(--md-sys-color-surface-container-lowest)] text-[var(--md-sys-color-primary)] font-mono text-[10px]">m</kbd>=metil,
+              <kbd className="px-1 py-0.5 rounded bg-[var(--md-sys-color-surface-container-lowest)] text-[var(--md-sys-color-primary)] font-mono text-[10px]">e</kbd>=etil,
+              <kbd className="px-1 py-0.5 rounded bg-[var(--md-sys-color-surface-container-lowest)] text-[var(--md-sys-color-primary)] font-mono text-[10px]">c</kbd>=cloro,
+              <kbd className="px-1 py-0.5 rounded bg-[var(--md-sys-color-surface-container-lowest)] text-[var(--md-sys-color-primary)] font-mono text-[10px]">h</kbd>=hidróxi,
+              <kbd className="px-1 py-0.5 rounded bg-[var(--md-sys-color-surface-container-lowest)] text-[var(--md-sys-color-primary)] font-mono text-[10px]">o</kbd>=oxo,
+              <kbd className="px-1 py-0.5 rounded bg-[var(--md-sys-color-surface-container-lowest)] text-[var(--md-sys-color-primary)] font-mono text-[10px]">a</kbd>=amino,
+              <kbd className="px-1 py-0.5 rounded bg-[var(--md-sys-color-surface-container-lowest)] text-[var(--md-sys-color-primary)] font-mono text-[10px]">n</kbd>=nitro).
             </span>
           </div>
         </div>
@@ -152,10 +152,10 @@ export const KeyboardCheatsheetModal: React.FC = () => {
           {SHORTCUT_CATEGORIES.map((cat) => (
             <div
               key={cat.name}
-              className="flex flex-col gap-2 p-3 rounded-xl bg-slate-900/50 border border-slate-800/80"
+              className="flex flex-col gap-2 p-3.5 rounded-2xl bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)]"
             >
-              <span className="text-[11px] font-bold text-cyan-400 tracking-wider uppercase flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+              <span className="text-[11px] font-bold text-[var(--md-sys-color-primary)] tracking-wider uppercase flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--md-sys-color-primary)]" />
                 {cat.name}
               </span>
 
@@ -163,16 +163,16 @@ export const KeyboardCheatsheetModal: React.FC = () => {
                 {cat.shortcuts.map((s) => (
                   <div
                     key={s.key}
-                    className="flex items-center justify-between p-1.5 rounded-lg bg-slate-950/60 border border-slate-800/60 hover:border-cyan-500/40 transition-colors"
+                    className="flex items-center justify-between p-2 rounded-xl bg-[var(--md-sys-color-surface-container-high)] border border-[var(--md-sys-color-outline-variant)]"
                   >
                     <div className="flex items-center gap-2">
-                      <kbd className="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-cyan-300 font-mono font-bold text-xs shadow-sm shadow-black min-w-[28px] text-center">
+                      <kbd className="px-2 py-1 rounded-lg bg-[var(--md-sys-color-surface-container-lowest)] text-[var(--md-sys-color-primary)] font-mono font-bold text-xs shadow-sm min-w-[28px] text-center">
                         {s.key}
                       </kbd>
-                      <span className="text-slate-200 font-semibold">{s.label}</span>
+                      <span className="text-[var(--md-sys-color-on-surface)] font-semibold">{s.label}</span>
                     </div>
                     {s.desc && (
-                      <span className="text-[11px] text-slate-400 font-sans truncate max-w-[180px]">
+                      <span className="text-[11px] text-[var(--md-sys-color-on-surface-variant)] font-sans truncate max-w-[180px]">
                         {s.desc}
                       </span>
                     )}
@@ -184,12 +184,12 @@ export const KeyboardCheatsheetModal: React.FC = () => {
         </div>
 
         {/* Footer */}
-        <div className="p-3 bg-slate-900/80 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400 font-sans">
-          <span>Pressione <kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-200 font-mono">?</kbd> ou <kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-200 font-mono">Esc</kbd> para fechar</span>
+        <div className="p-3.5 bg-[var(--md-sys-color-surface-container-low)] border-t border-[var(--md-sys-color-outline-variant)] flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-0 text-xs text-[var(--md-sys-color-on-surface-variant)] font-sans">
+          <span className="text-center sm:text-left">Pressione <kbd className="px-1.5 py-0.5 rounded bg-[var(--md-sys-color-surface-container-high)] font-mono text-[var(--md-sys-color-on-surface)]">?</kbd> ou <kbd className="px-1.5 py-0.5 rounded bg-[var(--md-sys-color-surface-container-high)] font-mono text-[var(--md-sys-color-on-surface)]">Esc</kbd> para fechar</span>
           <button
             type="button"
             onClick={closeCheatsheet}
-            className="px-4 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-bold font-mono transition-all active:scale-95 cursor-pointer"
+            className="m3-button-filled text-xs py-2.5 px-5 font-bold cursor-pointer min-h-[44px] w-full sm:w-auto"
           >
             Entendido
           </button>
