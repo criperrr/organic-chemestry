@@ -4,11 +4,24 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
-      "@quimicarush/chemistry-core": ["../chemistry-core/src/index.ts"],
-      "@quimicarush/chemistry-dataset": ["../chemistry-dataset/src/index.ts"],
-      "@quimicarush/gamification-engine": ["../gamification-engine/src/index.ts"],
-      "@quimicarush/smiles-renderer": ["../smiles-renderer/src/index.ts"]
+      "@quimicarush/chemistry-core": [
+        "../chemistry-core/src/index.ts"
+      ],
+      "@quimicarush/chemistry-dataset": [
+        "../chemistry-dataset/src/index.ts"
+      ],
+      "@quimicarush/gamification-engine": [
+        "../gamification-engine/src/index.ts"
+      ],
+      "@quimicarush/smiles-renderer": [
+        "../smiles-renderer/src/index.ts"
+      ],
+      "@quimicarush/molecule-canvas": [
+        "../molecule-canvas/src/index.ts"
+      ]
     }
   },
-  "include": ["src/**/*"]
+  "include": [
+    "src/**/*"
+  ]
 }

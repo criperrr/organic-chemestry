@@ -14,6 +14,10 @@ import {
   X,
   Palette,
   Check,
+  FlaskConical,
+  Maximize2,
+  Minimize2,
+  Crosshair,
 } from 'lucide-react';
 import { useGameStore, MONET_PALETTES } from '../stores/useGameStore.js';
 import { ALL_BADGES } from '@quimicarush/gamification-engine';
@@ -56,10 +60,12 @@ export const NavigationRail: React.FC = () => {
     activeTab,
     inputMode,
     soundEnabled,
+    isFullscreen,
     unlockedBadgeIds,
     toggleInputMode,
     setActiveTab,
     toggleSound,
+    toggleFullscreen,
     openAchievementsModal,
     toggleCheatsheet,
   } = useGameStore();
@@ -68,35 +74,45 @@ export const NavigationRail: React.FC = () => {
   const totalBadges = ALL_BADGES.length;
 
   return (
-    <aside className="hidden lg:flex w-64 xl:w-72 flex-col justify-between shrink-0 p-5 border-r border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] sticky top-0 h-screen overflow-y-auto select-none">
+    <aside className="hidden lg:flex w-64 xl:w-72 flex-col justify-between shrink-0 p-5 border-r border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container-low)] sticky top-0 h-screen overflow-y-auto overflow-x-hidden select-none">
       <div className="flex flex-col gap-6">
         {/* Top: Completely empty placeholder / breathing room */}
         <div className="pt-2">
-          {/* Material 3 Segmented Button Navigation */}
-          <nav className="m3-segmented-container w-full flex p-1">
-            <button
-              type="button"
-              onClick={() => setActiveTab('arcade')}
-              className={`m3-segmented-item flex-1 justify-center py-2 text-xs font-semibold ${
-                activeTab === 'arcade' ? 'active' : ''
-              }`}
-              title="Modo Treino Interativo"
-            >
-              <Zap className="w-4 h-4" />
-              <span>Treino</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('theory')}
-              className={`m3-segmented-item flex-1 justify-center py-2 text-xs font-semibold ${
-                activeTab === 'theory' ? 'active' : ''
-              }`}
-              title="Compêndio e Teoria IUPAC"
-            >
-              <BookOpen className="w-4 h-4" />
-              <span>Compêndio</span>
-            </button>
+          {/*
+            Vertical navigation list (Material 3 navigation drawer pattern).
+            A single segmented row cannot hold four destinations inside a 256px
+            rail — the buttons refuse to shrink past their labels and turn the
+            aside into a horizontally scrollable strip, clipping "Treino".
+          */}
+          <nav className="w-full flex flex-col gap-1">
+            {(
+              [
+                { id: 'arcade' as const, label: 'Treino', icon: Zap, hint: 'Modo Treino Interativo [1]' },
+                { id: 'cacar' as const, label: 'Caçada', icon: Crosshair, hint: 'Caça-Funções: identifique as funções orgânicas [2]' },
+                { id: 'theory' as const, label: 'Compêndio', icon: BookOpen, hint: 'Compêndio e Teoria IUPAC [3]' },
+                { id: 'sandbox' as const, label: 'Laboratório', icon: FlaskConical, hint: 'Laboratório Molecular Sandbox [4]' },
+              ]
+            ).map(({ id, label, icon: Icon, hint }, index) => {
+              const isActive = activeTab === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setActiveTab(id)}
+                  title={hint}
+                  aria-current={isActive ? 'page' : undefined}
+                  className={`w-full min-w-0 flex items-center gap-3 px-3.5 py-2.5 rounded-full text-sm font-semibold transition-colors duration-150 ${
+                    isActive
+                      ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)]'
+                      : 'text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-high)] hover:text-[var(--md-sys-color-on-surface)]'
+                  }`}
+                >
+                  <Icon className="w-4 h-4 shrink-0" />
+                  <span className="truncate">{label}</span>
+                  <kbd className="ml-auto shrink-0 text-[10px] font-mono opacity-40">{index + 1}</kbd>
+                </button>
+              );
+            })}
           </nav>
         </div>
 
@@ -105,6 +121,26 @@ export const NavigationRail: React.FC = () => {
           <span className="text-[11px] font-semibold text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider px-1">
             Ferramentas
           </span>
+
+          {/* Fullscreen / Modo Foco Toggle */}
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] border border-[var(--md-sys-color-outline-variant)] text-xs font-semibold text-[var(--md-sys-color-on-surface)] transition-all cursor-pointer shadow-sm active:scale-98"
+            title="Alternar Modo Foco / Tela Cheia [F]"
+          >
+            <div className="flex items-center gap-2.5">
+              {isFullscreen ? (
+                <Minimize2 className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
+              ) : (
+                <Maximize2 className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
+              )}
+              <span>{isFullscreen ? 'Sair do Foco' : 'Modo Foco'}</span>
+            </div>
+            <kbd className="px-1.5 py-0.5 rounded bg-[var(--md-sys-color-surface-container-highest)] border border-[var(--md-sys-color-outline-variant)] text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
+              F
+            </kbd>
+          </button>
 
           {/* Input Mode Toggle (visible during arcade) */}
           {activeTab === 'arcade' && (
@@ -329,12 +365,14 @@ export const MobileTopBar: React.FC = () => {
     activeTab,
     inputMode,
     soundEnabled,
+    isFullscreen,
     level,
     difficultyFilter,
     functionFilter,
     setActiveTab,
     toggleInputMode,
     toggleSound,
+    toggleFullscreen,
     openAchievementsModal,
     openMobileControlSheet,
   } = useGameStore();
@@ -344,26 +382,50 @@ export const MobileTopBar: React.FC = () => {
   return (
     <header className="flex lg:hidden items-center justify-between h-13 px-2.5 sm:px-3.5 bg-[var(--md-sys-color-surface-container-low)] border-b border-[var(--md-sys-color-outline-variant)] sticky top-0 z-40 safe-top">
       {/* Tab Segmented Switcher */}
-      <nav className="m3-segmented-container shrink-0">
+      <nav className="m3-segmented-container shrink min-w-0">
         <button
           type="button"
           onClick={() => setActiveTab('arcade')}
-          className={`m3-segmented-item px-2.5 sm:px-3 py-1 text-xs font-semibold min-h-[34px] ${
+          className={`m3-segmented-item px-2 sm:px-2.5 py-1 text-xs font-semibold min-h-[34px] ${
             activeTab === 'arcade' ? 'active' : ''
           }`}
+          title="Treino [1]"
         >
           <Zap className="w-3.5 h-3.5" />
-          <span>Treino</span>
+          <span className="hidden sm:inline">Treino</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('cacar')}
+          className={`m3-segmented-item px-2 sm:px-2.5 py-1 text-xs font-semibold min-h-[34px] ${
+            activeTab === 'cacar' ? 'active' : ''
+          }`}
+          title="Caça-Funções [2]"
+        >
+          <Crosshair className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Caçada</span>
         </button>
         <button
           type="button"
           onClick={() => setActiveTab('theory')}
-          className={`m3-segmented-item px-2.5 sm:px-3 py-1 text-xs font-semibold min-h-[34px] ${
+          className={`m3-segmented-item px-2 sm:px-2.5 py-1 text-xs font-semibold min-h-[34px] ${
             activeTab === 'theory' ? 'active' : ''
           }`}
+          title="Teoria [3]"
         >
           <BookOpen className="w-3.5 h-3.5" />
-          <span>Teoria</span>
+          <span className="hidden sm:inline">Teoria</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('sandbox')}
+          className={`m3-segmented-item px-2 sm:px-2.5 py-1 text-xs font-semibold min-h-[34px] ${
+            activeTab === 'sandbox' ? 'active' : ''
+          }`}
+          title="Laboratório [4]"
+        >
+          <FlaskConical className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Lab</span>
         </button>
       </nav>
 
@@ -380,6 +442,21 @@ export const MobileTopBar: React.FC = () => {
             )}
           </span>
         )}
+
+        {/* Fullscreen / Modo Foco Toggle */}
+        <button
+          type="button"
+          onClick={toggleFullscreen}
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] active:scale-95"
+          aria-label="Alternar Modo Foco / Tela Cheia"
+          title="Modo Foco / Tela Cheia [F]"
+        >
+          {isFullscreen ? (
+            <Minimize2 className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
+          ) : (
+            <Maximize2 className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
+          )}
+        </button>
 
         {/* Mobile Control Sheet & Telemetry Trigger (Level + Filter Settings) */}
         <button
@@ -465,6 +542,8 @@ export const MobileControlSheet: React.FC = () => {
     monetTheme,
     setMonetTheme,
     openAchievementsModal,
+    isFullscreen,
+    toggleFullscreen,
   } = useGameStore();
 
   useEffect(() => {
@@ -575,6 +654,26 @@ export const MobileControlSheet: React.FC = () => {
               <span>Conquistas & Troféus Desbloqueados</span>
             </div>
             <span className="text-xs text-[var(--md-sys-color-primary)] font-mono">Abrir →</span>
+          </button>
+
+          {/* Modo Foco (Tela Cheia) Button */}
+          <button
+            type="button"
+            onClick={() => {
+              closeMobileControlSheet();
+              toggleFullscreen();
+            }}
+            className="p-3 rounded-2xl bg-[var(--md-sys-color-surface-container-high)] border border-[var(--md-sys-color-outline-variant)] flex items-center justify-between text-xs font-bold cursor-pointer hover:border-[var(--md-sys-color-primary)] transition-colors min-h-[44px]"
+          >
+            <div className="flex items-center gap-2 text-[var(--md-sys-color-on-surface)]">
+              {isFullscreen ? (
+                <Minimize2 className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
+              ) : (
+                <Maximize2 className="w-4 h-4 text-[var(--md-sys-color-primary)]" />
+              )}
+              <span>{isFullscreen ? 'Sair do Modo Foco' : 'Ativar Modo Foco / Tela Cheia'}</span>
+            </div>
+            <span className="text-xs text-[var(--md-sys-color-primary)] font-mono">[F]</span>
           </button>
 
           {/* Dificuldade Filter */}

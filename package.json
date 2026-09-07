@@ -10,7 +10,9 @@
     "test:watch": "vitest",
     "build": "npm run build --workspaces --if-present",
     "dev": "npm run dev -w packages/web-app",
-    "typecheck": "tsc --noEmit -p packages/chemistry-core && tsc --noEmit -p packages/chemistry-dataset && tsc --noEmit -p packages/gamification-engine && tsc --noEmit -p packages/smiles-renderer && tsc --noEmit -p packages/web-app"
+    "typecheck": "tsc --noEmit -p packages/chemistry-core && tsc --noEmit -p packages/chemistry-dataset && tsc --noEmit -p packages/gamification-engine && tsc --noEmit -p packages/smiles-renderer && tsc --noEmit -p packages/molecule-canvas && tsc --noEmit -p packages/web-app && tsc --noEmit -p packages/molecule-studio",
+    "dev:studio": "npm run dev -w packages/molecule-studio",
+    "audit:names": "vitest run --config vitest.audit.config.ts"
   },
   "devDependencies": {
     "@types/node": "^22.13.5",

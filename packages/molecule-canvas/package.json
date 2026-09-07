@@ -1,0 +1,14 @@
+{
+  "name": "@quimicarush/molecule-canvas",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "dependencies": {
+    "@quimicarush/chemistry-core": "*",
+    "@quimicarush/gamification-engine": "*",
+    "lucide-react": "^1.16.0",
+    "react": "^19.0.0"
+  }
+}

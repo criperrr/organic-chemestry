@@ -473,3 +473,37 @@
   animation: slideUpMobile 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+
+/* ==========================================================================
+   Molecule Studio — full-bleed editor shell
+   The canvas owns the whole viewport; every control floats above it.
+   ========================================================================== */
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background-color: var(--md-sys-color-surface);
+  color: var(--md-sys-color-on-surface);
+}
+
+.studio-floating {
+  background-color: color-mix(in srgb, var(--md-sys-color-surface-container-high) 88%, transparent);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  box-shadow: 0 12px 34px -14px rgba(0, 0, 0, 0.75);
+}
+
+/* Controls fade out of the way but stay reachable. */
+.studio-fade {
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.studio-fade[data-hidden='true'] {
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+}

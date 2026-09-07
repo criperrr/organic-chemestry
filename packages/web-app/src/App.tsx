@@ -4,6 +4,9 @@ import { SpeedrunnerInput } from './components/SpeedrunnerInput.js';
 import { SlotBuilder } from './components/SlotBuilder.js';
 import { FeedbackCard } from './components/FeedbackCard.js';
 import { TheoryHub } from './components/TheoryHub.js';
+import { SandboxHub } from './components/SandboxHub.js';
+import { FunctionHunt } from './components/FunctionHunt.js';
+import { MomentumBar } from './components/MomentumBar.js';
 import { KeyboardShortcuts } from './components/KeyboardShortcuts.js';
 import { KeyboardCheatsheetModal } from './components/KeyboardCheatsheetModal.js';
 import { AchievementsModal } from './components/AchievementsModal.js';
@@ -16,6 +19,7 @@ import {
   Flame,
   Atom,
   ZoomIn,
+  Minimize2,
 } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -29,6 +33,9 @@ export const App: React.FC = () => {
     difficultyFilter,
     screenShake,
     openMoleculeZoom,
+    isFullscreen,
+    toggleFullscreen,
+    isGoldenMolecule,
   } = useGameStore();
 
   const [isMobileScreen, setIsMobileScreen] = useState(() =>
@@ -41,6 +48,23 @@ export const App: React.FC = () => {
     };
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Synchronize browser native fullscreen change events with store state
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isDocFs = !!document.fullscreenElement;
+      if (useGameStore.getState().isFullscreen !== isDocFs) {
+        useGameStore.setState({ isFullscreen: isDocFs });
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+    };
   }, []);
 
   useEffect(() => {
@@ -75,26 +99,67 @@ export const App: React.FC = () => {
       <MoleculeZoomModal />
       <MobileControlSheet />
 
-      {/* Mobile Top Bar (< lg only: compact 52px header with telemetry indicators) */}
-      <MobileTopBar />
+      {/* Persistent Floating Exit Fullscreen / Modo Foco Pill Button */}
+      {isFullscreen && (
+        <button
+          type="button"
+          onClick={toggleFullscreen}
+          title="Sair do Modo Foco / Tela Cheia [F] ou [Esc]"
+          aria-label="Sair do Modo Foco / Tela Cheia"
+          className="fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-2 rounded-full bg-[var(--md-sys-color-surface-container-highest)]/90 hover:bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] border border-[var(--md-sys-color-outline-variant)] shadow-xl backdrop-blur-md text-xs font-semibold cursor-pointer transition-all duration-200 hover:scale-105 active:scale-95 animate-fadeIn"
+        >
+          <Minimize2 className="w-4 h-4 text-[var(--md-sys-color-primary)] shrink-0" />
+          <span className="hidden sm:inline">Sair do Modo Foco</span>
+          <span className="sm:hidden">Sair</span>
+          <kbd className="px-1.5 py-0.5 rounded bg-[var(--md-sys-color-surface-container-low)] border border-[var(--md-sys-color-outline-variant)] text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
+            F
+          </kbd>
+        </button>
+      )}
 
-      {/* Distributed 3-Column Workspace (Desktop >= lg) */}
+      {/* Mobile Top Bar (< lg only: compact 52px header with telemetry indicators) - hidden in focus mode */}
+      {!isFullscreen && <MobileTopBar />}
+
+      {/* Distributed Workspace (Desktop >= lg) */}
       <div className="flex-1 flex flex-col lg:flex-row w-full min-h-0">
-        {/* Left Rail: Navigation & Tools (Desktop) */}
-        <NavigationRail />
+        {/* Left Rail: Navigation & Tools (Desktop) - hidden in focus mode */}
+        {!isFullscreen && <NavigationRail />}
 
         {/* Center Stage: 100% Focused on the Molecule & Interactive Input */}
-        <main className="flex-1 flex flex-col items-center justify-start lg:justify-center px-2 py-3 sm:px-6 sm:py-8 min-w-0 w-full overflow-y-auto">
-          {activeTab === 'theory' ? (
+        <main
+          className={`flex-1 flex flex-col items-center justify-start lg:justify-center px-2 py-3 sm:px-6 sm:py-8 min-w-0 w-full overflow-y-auto ${
+            isFullscreen ? 'max-w-6xl mx-auto' : ''
+          }`}
+        >
+          {activeTab === 'cacar' ? (
+            <div className="w-full max-w-3xl mx-auto">
+              <FunctionHunt />
+            </div>
+          ) : activeTab === 'theory' ? (
             <div className="w-full max-w-4xl mx-auto">
               <TheoryHub />
             </div>
+          ) : activeTab === 'sandbox' ? (
+            <div className="w-full max-w-5xl mx-auto">
+              <SandboxHub />
+            </div>
           ) : (
-            <div className="w-full max-w-2xl xl:max-w-3xl mx-auto flex flex-col items-center gap-4 sm:gap-6">
+            <div
+              className={`w-full ${
+                isFullscreen ? 'max-w-3xl' : 'max-w-2xl xl:max-w-3xl'
+              } mx-auto flex flex-col items-center gap-4 sm:gap-6`}
+            >
               {/* Molecule Presentation Stage (Material 3 Card - Clean & Serene) */}
               {currentMolecule ? (
                 <div className="w-full flex flex-col gap-4 sm:gap-6">
-                  <div className="m3-card w-full p-4 sm:p-7 flex flex-col items-center gap-3 sm:gap-4 transition-all duration-200 shadow-sm">
+                  <MomentumBar />
+                  <div
+                    className={`m3-card w-full p-4 sm:p-7 flex flex-col items-center gap-3 sm:gap-4 transition-all duration-200 ${
+                      isGoldenMolecule && !isAnswerSubmitted
+                        ? 'shadow-[0_0_0_2px_#d4a017,0_0_28px_-6px_#d4a017]'
+                        : 'shadow-sm'
+                    }`}
+                  >
                     {/* Top Context Header */}
                     <div className="w-full flex items-center justify-between gap-2 text-xs font-mono">
                       <div className="flex items-center gap-1.5 min-w-0">
@@ -182,8 +247,8 @@ export const App: React.FC = () => {
           )}
         </main>
 
-        {/* Right Rail: Telemetry & Filters (Desktop) */}
-        <TelemetryRail />
+        {/* Right Rail: Telemetry & Filters (Desktop) - hidden in focus mode */}
+        {!isFullscreen && <TelemetryRail />}
       </div>
     </div>
   );

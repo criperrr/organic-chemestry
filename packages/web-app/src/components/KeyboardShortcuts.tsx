@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useGameStore } from '../stores/useGameStore.js';
+import { useGameStore, type ActiveTab } from '../stores/useGameStore.js';
 
 const STEM_DIGIT_MAP: Record<string, string> = {
   '1': 'met',
@@ -50,6 +50,11 @@ export const KeyboardShortcuts: React.FC = () => {
     isCheatsheetOpen,
     isAchievementsModalOpen,
     closeAchievementsModal,
+    isMoleculeZoomOpen,
+    closeMoleculeZoom,
+    isFullscreen,
+    toggleFullscreen,
+    setFullscreen,
     playMechanicalKeySound,
   } = useGameStore();
 
@@ -69,7 +74,7 @@ export const KeyboardShortcuts: React.FC = () => {
         return;
       }
 
-      // 2. Escape: Closes open modals or clears state
+      // 2. Escape: Closes open modals or exits focus mode or clears state
       if (e.key === 'Escape') {
         e.preventDefault();
         if (isCheatsheetOpen) {
@@ -78,6 +83,14 @@ export const KeyboardShortcuts: React.FC = () => {
         }
         if (isAchievementsModalOpen) {
           closeAchievementsModal();
+          return;
+        }
+        if (isMoleculeZoomOpen) {
+          closeMoleculeZoom();
+          return;
+        }
+        if (isFullscreen) {
+          setFullscreen(false);
           return;
         }
         if (quickRadicalMode.active) {
@@ -93,29 +106,61 @@ export const KeyboardShortcuts: React.FC = () => {
       }
 
       // If modal is open, do not handle game actions
-      if (isCheatsheetOpen || isAchievementsModalOpen) {
+      if (isCheatsheetOpen || isAchievementsModalOpen || isMoleculeZoomOpen) {
         return;
       }
 
-      // 3. Tab: Toggle between Speedrunner and SlotBuilder (only in arcade tab)
+      // 3. Fullscreen / Modo Foco toggle with 'F' or 'f'
+      if ((e.key === 'f' || e.key === 'F') && !isInputFocused) {
+        if (activeTab === 'arcade' && inputMode === 'slotBuilder' && e.key === 'f') {
+          // let slotBuilder handle fenol
+        } else if (activeTab === 'cacar' && e.key === 'f') {
+          // let the Caça-Funções round own its letter hotkeys
+        } else {
+          e.preventDefault();
+          toggleFullscreen();
+          return;
+        }
+      }
+
+      // 4. Tab navigation: [1] Treino, [2] Caçada, [3] Compêndio, [4] Laboratório
+      if (!isInputFocused && !(activeTab === 'arcade' && inputMode === 'slotBuilder')) {
+        const tabByKey: Record<string, ActiveTab> = {
+          '1': 'arcade',
+          '2': 'cacar',
+          '3': 'theory',
+          '4': 'sandbox',
+        };
+        const target = tabByKey[e.key];
+        if (target) {
+          e.preventDefault();
+          playMechanicalKeySound();
+          setActiveTab(target);
+          return;
+        }
+      }
+
+      // 5. Tab: Toggle between Speedrunner and SlotBuilder (only in arcade tab)
       if (e.key === 'Tab' && activeTab === 'arcade' && !isInputFocused) {
         e.preventDefault();
         toggleInputMode();
         return;
       }
 
-      // 4. Space or Enter when feedback is shown: advance to next question
+      // 6. Space or Enter when feedback is shown: advance to next question
       if (isAnswerSubmitted && (e.key === ' ' || e.key === 'Enter')) {
         e.preventDefault();
         nextQuestion();
         return;
       }
 
-      // 5. 'V' or 'v': Toggle between Arcade and Theory Hub (when not typing in an input)
-      if ((e.key === 'v' || e.key === 'V') && !isInputFocused) {
+      // 7. 'V' or 'v': Cycle between Arcade, Theory, and Sandbox Hub (when not typing in an input)
+      if ((e.key === 'v' || e.key === 'V') && !isInputFocused && activeTab !== 'cacar') {
         e.preventDefault();
         playMechanicalKeySound();
-        setActiveTab(activeTab === 'arcade' ? 'theory' : 'arcade');
+        const cycle: ActiveTab[] = ['arcade', 'cacar', 'theory', 'sandbox'];
+        const nextTab = cycle[(cycle.indexOf(activeTab) + 1) % cycle.length];
+        setActiveTab(nextTab);
         return;
       }
 
@@ -324,6 +369,11 @@ export const KeyboardShortcuts: React.FC = () => {
     isCheatsheetOpen,
     isAchievementsModalOpen,
     closeAchievementsModal,
+    isMoleculeZoomOpen,
+    closeMoleculeZoom,
+    isFullscreen,
+    toggleFullscreen,
+    setFullscreen,
     playMechanicalKeySound,
   ]);
 

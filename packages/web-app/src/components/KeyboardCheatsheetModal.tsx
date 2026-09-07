@@ -6,11 +6,15 @@ const SHORTCUT_CATEGORIES = [
   {
     name: 'Navegação & Modos',
     shortcuts: [
+      { key: 'F', label: 'Modo Foco / Tela Cheia', desc: 'Oculta barras laterais para foco total' },
       { key: 'Tab', label: 'Modo de Entrada', desc: 'Alterna Teclado Rápido / Construtor de Slots' },
-      { key: 'V', label: 'Alternar Abas', desc: 'Arcade vs Compêndio Teórico' },
+      { key: '1', label: 'Treino (Arcade)', desc: 'Muda para o Modo Treino' },
+      { key: '2', label: 'Compêndio (Teoria)', desc: 'Muda para o Compêndio Teórico' },
+      { key: '3', label: 'Laboratório (Sandbox)', desc: 'Muda para o Laboratório Molecular' },
+      { key: 'V', label: 'Alternar Abas', desc: 'Alterna Arcade, Compêndio e Laboratório' },
       { key: '?', label: 'Guia de Atalhos', desc: 'Abre/fecha este painel cheatsheet' },
       { key: 'M', label: 'Silenciar Som', desc: 'Alterna mudo da Web Audio API' },
-      { key: 'Esc', label: 'Fechar / Cancelar', desc: 'Fecha modais ou cancela modo' },
+      { key: 'Esc', label: 'Sair do Foco / Fechar', desc: 'Sai do Modo Foco ou fecha modais' },
     ],
   },
   {

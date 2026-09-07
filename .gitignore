@@ -5,3 +5,5 @@ dist/
 .DS_Store
 *.local
 coverage/
+tools-opsin-*.jar
+tools/audit-output/

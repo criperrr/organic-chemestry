@@ -30,7 +30,7 @@ import { historyDb } from '../db/historyDb.js';
 import { haptics } from '../utils/haptics.js';
 
 export type InputMode = 'speedrunner' | 'slotBuilder';
-export type ActiveTab = 'arcade' | 'theory';
+export type ActiveTab = 'arcade' | 'cacar' | 'theory' | 'sandbox';
 
 export type MonetPaletteId = 'emerald' | 'blue' | 'purple' | 'amber' | 'rose' | 'slate';
 
@@ -231,6 +231,15 @@ export interface GameStore {
   lastIsSpeedBlitz: boolean;
   lastSpeedBonusXP: number;
   isFeverActive: boolean;
+  /**
+   * Variable-ratio reward: roughly one question in twelve is "dourada" and pays
+   * triple. Unpredictable jackpots are what keep a practice loop compulsive.
+   */
+  isGoldenMolecule: boolean;
+  /** Correct answers still needed to crack the current session chest. */
+  chestGoal: number;
+  chestProgress: number;
+  chestsOpened: number;
 
   // Reward floaters & screen shake
   rewardFloaters: RewardFloater[];
@@ -252,6 +261,7 @@ export interface GameStore {
   activeTab: ActiveTab;
   userInput: string;
   slotState: SlotBuilderState;
+  isFullscreen: boolean;
 
   // Evaluation & feedback
   currentEvaluation: EvaluationResult | null;
@@ -266,6 +276,9 @@ export interface GameStore {
 
   // Actions
   initSession: () => void;
+  setCurrentMolecule: (mol: Molecule) => void;
+  toggleFullscreen: () => void;
+  setFullscreen: (val: boolean) => void;
   loadBadgesFromDb: () => Promise<void>;
   setMonetTheme: (theme: MonetPaletteId) => void;
   submitAnswer: () => void;
@@ -279,6 +292,16 @@ export interface GameStore {
   clearSlotState: () => void;
   toggleInputMode: () => void;
   setActiveTab: (tab: ActiveTab) => void;
+  /**
+   * Feeds a result from a non-typing game mode (Caça-Funções) into the same
+   * XP / streak / combo / badge pipeline the Arcade uses.
+   */
+  awardModeResult: (input: {
+    score: number;
+    isPerfect: boolean;
+    responseTimeMs: number;
+    label: string;
+  }) => void;
   setDifficultyFilter: (diff: DifficultyTier | 'todos') => void;
   setFunctionFilter: (func: OrganicFunction | 'todos') => void;
   toggleSound: () => void;
@@ -296,8 +319,53 @@ export interface GameStore {
   closeMoleculeZoom: () => void;
   setQuickRadicalMode: (mode: { active: boolean; locant?: string }) => void;
   dismissBadgeToast: () => void;
+  /** Rolls the golden-molecule dice for the question being served. */
+  rollGoldenMolecule: () => void;
   dismissLevelUpNotice: () => void;
   resetSession: () => void;
+}
+
+
+/**
+ * Applies the two variable-reward layers on top of the base XP:
+ *  - a golden molecule pays triple;
+ *  - every `chestGoal` correct answers cracks a chest worth a flat bonus.
+ *
+ * Both are deliberately unpredictable: a fixed payout stops feeling like a
+ * reward after a dozen repetitions, a variable one does not.
+ */
+function applyBonusLayers(input: {
+  earnedXP: number;
+  isSuccess: boolean;
+  isGolden: boolean;
+  chestProgress: number;
+  chestGoal: number;
+  chestsOpened: number;
+}): {
+  finalXP: number;
+  goldenBonusXP: number;
+  chestBonusXP: number;
+  nextChestProgress: number;
+  nextChestGoal: number;
+  nextChestsOpened: number;
+  chestCracked: boolean;
+} {
+  const goldenActive = input.isGolden && input.isSuccess;
+  const goldenBonusXP = goldenActive ? input.earnedXP * 2 : 0;
+
+  const advanced = input.isSuccess ? input.chestProgress + 1 : input.chestProgress;
+  const chestCracked = advanced >= input.chestGoal;
+  const chestBonusXP = chestCracked ? 40 + input.chestsOpened * 15 : 0;
+
+  return {
+    finalXP: input.earnedXP + goldenBonusXP + chestBonusXP,
+    goldenBonusXP,
+    chestBonusXP,
+    nextChestProgress: chestCracked ? 0 : advanced,
+    nextChestGoal: chestCracked ? Math.min(12, input.chestGoal + 1) : input.chestGoal,
+    nextChestsOpened: chestCracked ? input.chestsOpened + 1 : input.chestsOpened,
+    chestCracked,
+  };
 }
 
 export const useGameStore = create<GameStore>((set, get) => ({
@@ -316,6 +384,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
   lastIsSpeedBlitz: false,
   lastSpeedBonusXP: 0,
   isFeverActive: false,
+  isGoldenMolecule: false,
+  chestGoal: 5,
+  chestProgress: 0,
+  chestsOpened: 0,
 
   rewardFloaters: [],
   screenShake: false,
@@ -334,6 +406,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   activeTab: 'arcade',
   userInput: '',
   slotState: { ...INITIAL_SLOT_STATE },
+  isFullscreen: false,
 
   currentEvaluation: null,
   isAnswerSubmitted: false,
@@ -396,6 +469,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       lastSpeedBonusXP: 0,
       rewardFloaters: [],
       nearMissNotice: null,
+      isGoldenMolecule: Math.random() < 1 / 12,
     });
   },
 
@@ -416,6 +490,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
       questionStartTime,
       unlockedBadgeIds,
       difficultyFilter,
+      isGoldenMolecule,
+      chestProgress,
+      chestGoal,
+      chestsOpened,
     } = get();
 
     if (!currentMolecule || isAnswerSubmitted) return;
@@ -454,10 +532,19 @@ export const useGameStore = create<GameStore>((set, get) => ({
       ? calculateSpeedBonusXP(baseXP, multiplier, evalResult.score)
       : 0;
 
-    const newTotalXP = xp + earnedXP;
+    const bonus = applyBonusLayers({
+      earnedXP,
+      isSuccess,
+      isGolden: isGoldenMolecule,
+      chestProgress,
+      chestGoal,
+      chestsOpened,
+    });
+
+    const newTotalXP = xp + bonus.finalXP;
     const newLevel = getLevelForXP(newTotalXP);
     const newProgress = getLevelProgress(newTotalXP);
-    const newScore = score + earnedXP;
+    const newScore = score + bonus.finalXP;
     const leveledUp = newLevel > level;
 
     // Update FSRS repetition queue
@@ -483,12 +570,28 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     // Floating reward pills
     const newFloaters: RewardFloater[] = [];
-    if (earnedXP > 0) {
+    if (bonus.finalXP > 0) {
       newFloaters.push({
         id: `xp-${Date.now()}`,
-        text: `+${earnedXP} XP`,
+        text: `+${bonus.finalXP} XP`,
         type: 'xp',
         color: '#00f3ff',
+      });
+    }
+    if (bonus.goldenBonusXP > 0) {
+      newFloaters.push({
+        id: `golden-${Date.now()}`,
+        text: `🪙 MOLÉCULA DOURADA — XP TRIPLO!`,
+        type: 'combo',
+        color: '#ffd700',
+      });
+    }
+    if (bonus.chestCracked) {
+      newFloaters.push({
+        id: `chest-${Date.now()}`,
+        text: `🎁 BAÚ ABERTO (+${bonus.chestBonusXP} XP)!`,
+        type: 'level',
+        color: '#b537f2',
       });
     }
     if (isSpeedBlitz) {
@@ -534,6 +637,19 @@ export const useGameStore = create<GameStore>((set, get) => ({
         origin: { y: 0.5 },
         colors: ['#ffd700', '#ff0077', '#00ffff', '#7928ca'],
       });
+    }
+
+    if (bonus.chestCracked) {
+      shouldShake = true;
+      setTimeout(() => set({ screenShake: false }), 350);
+      confetti({
+        particleCount: 160,
+        spread: 110,
+        startVelocity: 42,
+        origin: { y: 0.6 },
+        colors: ['#ffd700', '#ffe600', '#b537f2', '#00ff88'],
+      });
+      if (soundEnabled) soundSynth.playMilestone(6);
     }
 
     // Check near-miss encouragement for scores between 70% and 95%
@@ -629,6 +745,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       recentlyUnlockedBadge: latestUnlockedBadge,
       levelUpNotice: levelUpNoticeData,
       autoAdvanceTimer: timer,
+      chestProgress: bonus.nextChestProgress,
+      chestGoal: bonus.nextChestGoal,
+      chestsOpened: bonus.nextChestsOpened,
     });
   },
 
@@ -754,10 +873,262 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ inputMode: inputMode === 'speedrunner' ? 'slotBuilder' : 'speedrunner' });
   },
 
+  awardModeResult: ({ score: resultScore, isPerfect, responseTimeMs, label }) => {
+    const {
+      streak,
+      maxStreak,
+      xp,
+      level,
+      score,
+      soundEnabled,
+      currentMolecule,
+      unlockedBadgeIds,
+      difficultyFilter,
+      chestProgress,
+      chestGoal,
+      chestsOpened,
+    } = get();
+
+    const isSuccess = isPerfect || resultScore >= 0.8;
+    const isSpeedBlitz = isSuccess && responseTimeMs < SPEED_BLITZ_THRESHOLD_MS;
+
+    const newStreak = isSuccess ? streak + 1 : 0;
+    const newMaxStreak = Math.max(maxStreak, newStreak);
+    const multiplier = getMultiplierForStreak(newStreak);
+    const isFever = newStreak >= 10;
+
+    const baseXP = isSuccess ? DEFAULT_BASE_XP : Math.round(DEFAULT_BASE_XP * 0.2);
+    const earnedXP = calculateXP(baseXP, multiplier, resultScore, isSpeedBlitz);
+    const speedBonusXP = isSpeedBlitz
+      ? calculateSpeedBonusXP(baseXP, multiplier, resultScore)
+      : 0;
+
+    const bonus = applyBonusLayers({
+      earnedXP,
+      isSuccess,
+      isGolden: false,
+      chestProgress,
+      chestGoal,
+      chestsOpened,
+    });
+
+    const newTotalXP = xp + bonus.finalXP;
+    const newLevel = getLevelForXP(newTotalXP);
+    const newProgress = getLevelProgress(newTotalXP);
+    const leveledUp = newLevel > level;
+
+    if (isSuccess) {
+      if (leveledUp) haptics.levelUp();
+      else haptics.success();
+    } else {
+      haptics.error();
+    }
+
+    if (soundEnabled) {
+      soundSynth.playAnswerFeedback(isSuccess, newStreak, isSpeedBlitz);
+      if (leveledUp) soundSynth.playLevelUp();
+    }
+
+    const newFloaters: RewardFloater[] = [];
+    if (bonus.finalXP > 0) {
+      newFloaters.push({
+        id: `xp-${Date.now()}`,
+        text: `+${bonus.finalXP} XP · ${label}`,
+        type: 'xp',
+        color: '#00f3ff',
+      });
+    }
+    if (bonus.chestCracked) {
+      newFloaters.push({
+        id: `chest-${Date.now()}`,
+        text: `🎁 BAÚ ABERTO (+${bonus.chestBonusXP} XP)!`,
+        type: 'level',
+        color: '#b537f2',
+      });
+    }
+    if (isSpeedBlitz) {
+      newFloaters.push({
+        id: `speed-${Date.now()}`,
+        text: `⚡ NO REFLEXO (+${speedBonusXP} XP)!`,
+        type: 'speed',
+        color: '#ffe600',
+      });
+    }
+    if (multiplier > 1.0 && isSuccess) {
+      newFloaters.push({
+        id: `combo-${Date.now()}`,
+        text: `COMBO x${multiplier.toFixed(1)}!`,
+        type: 'combo',
+        color: '#ff7700',
+      });
+    }
+
+    let shouldShake = false;
+    if (isPerfect || newStreak === 5 || newStreak === 10 || newStreak === 20) {
+      shouldShake = true;
+      setTimeout(() => set({ screenShake: false }), 350);
+    }
+
+    if (isPerfect) {
+      confetti({
+        particleCount: 85,
+        spread: 70,
+        origin: { y: 0.65 },
+        colors: ['#00f3ff', '#ffe600', '#00ff88', '#b537f2', '#ff7700'],
+      });
+    }
+    if (leveledUp) {
+      confetti({
+        particleCount: 130,
+        spread: 90,
+        origin: { y: 0.5 },
+        colors: ['#ffd700', '#ff0077', '#00ffff', '#7928ca'],
+      });
+    }
+    if (bonus.chestCracked) {
+      shouldShake = true;
+      setTimeout(() => set({ screenShake: false }), 350);
+      confetti({
+        particleCount: 160,
+        spread: 110,
+        startVelocity: 42,
+        origin: { y: 0.6 },
+        colors: ['#ffd700', '#ffe600', '#b537f2', '#00ff88'],
+      });
+      if (soundEnabled) soundSynth.playMilestone(6);
+    }
+
+    const newlyUnlocked = currentMolecule
+      ? checkNewAchievements({
+          isPerfect,
+          score: resultScore,
+          streak: newStreak,
+          maxStreak: newMaxStreak,
+          responseTimeMs,
+          difficulty: currentMolecule.difficulty,
+          primaryFunction: currentMolecule.primaryFunction,
+          isChaos: difficultyFilter === 'caos' || currentMolecule.difficulty === 'caos',
+          totalXP: newTotalXP,
+          level: newLevel,
+          unlockedBadgeIds,
+        })
+      : [];
+
+    const updatedBadgeIds = [...unlockedBadgeIds];
+    let latestUnlockedBadge: Badge | null = null;
+    if (newlyUnlocked.length > 0) {
+      latestUnlockedBadge = newlyUnlocked[0];
+      for (const badge of newlyUnlocked) {
+        if (!updatedBadgeIds.includes(badge.id)) {
+          updatedBadgeIds.push(badge.id);
+          historyDb.recordUnlockedBadge(badge.id).catch(() => {});
+        }
+      }
+      if (soundEnabled) soundSynth.playBadgeUnlock();
+    }
+
+    set({
+      streak: newStreak,
+      maxStreak: newMaxStreak,
+      multiplier,
+      xp: newTotalXP,
+      level: newLevel,
+      levelProgress: newProgress,
+      score: score + bonus.finalXP,
+      chestProgress: bonus.nextChestProgress,
+      chestGoal: bonus.nextChestGoal,
+      chestsOpened: bonus.nextChestsOpened,
+      lastResponseTimeMs: responseTimeMs,
+      lastIsSpeedBlitz: isSpeedBlitz,
+      lastSpeedBonusXP: speedBonusXP,
+      isFeverActive: isFever,
+      rewardFloaters: newFloaters,
+      screenShake: shouldShake,
+      unlockedBadgeIds: updatedBadgeIds,
+      recentlyUnlockedBadge: latestUnlockedBadge,
+      levelUpNotice: leveledUp
+        ? {
+            oldLevel: level,
+            newLevel,
+            title: getLevelTitle(newLevel),
+            badgeEmoji: newProgress.titleBadgeEmoji,
+          }
+        : null,
+    });
+  },
+
+  rollGoldenMolecule: () => {
+    set({ isGoldenMolecule: Math.random() < 1 / 12 });
+  },
+
   setActiveTab: (tab: ActiveTab) => {
     const { soundEnabled } = get();
     if (soundEnabled) soundSynth.playClick();
     set({ activeTab: tab });
+  },
+
+  setCurrentMolecule: (mol: Molecule) => {
+    const { queue } = get();
+    queue.enqueue([mol]);
+    set({
+      currentMolecule: mol,
+      userInput: '',
+      slotState: { ...INITIAL_SLOT_STATE },
+      currentEvaluation: null,
+      isAnswerSubmitted: false,
+      questionStartTime: Date.now(),
+      lastIsSpeedBlitz: false,
+      lastSpeedBonusXP: 0,
+      rewardFloaters: [],
+      nearMissNotice: null,
+    });
+  },
+
+  toggleFullscreen: () => {
+    const current = get().isFullscreen;
+    const next = !current;
+    const { soundEnabled } = get();
+    if (soundEnabled) soundSynth.playClick();
+    set({ isFullscreen: next });
+
+    if (typeof document !== 'undefined') {
+      try {
+        if (next) {
+          if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+            document.documentElement.requestFullscreen().catch(() => {});
+          }
+        } else {
+          if (document.fullscreenElement && document.exitFullscreen) {
+            document.exitFullscreen().catch(() => {});
+          }
+        }
+      } catch {
+        // Safe fallback in restricted environments
+      }
+    }
+  },
+
+  setFullscreen: (val: boolean) => {
+    const { soundEnabled, isFullscreen } = get();
+    if (val === isFullscreen) return;
+    if (soundEnabled) soundSynth.playClick();
+    set({ isFullscreen: val });
+
+    if (typeof document !== 'undefined') {
+      try {
+        if (val) {
+          if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+            document.documentElement.requestFullscreen().catch(() => {});
+          }
+        } else {
+          if (document.fullscreenElement && document.exitFullscreen) {
+            document.exitFullscreen().catch(() => {});
+          }
+        }
+      } catch {
+        // Safe fallback in restricted environments
+      }
+    }
   },
 
   setDifficultyFilter: (diff: DifficultyTier | 'todos') => {

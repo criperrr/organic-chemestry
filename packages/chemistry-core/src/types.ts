@@ -200,3 +200,56 @@ export const MoleculeSchema = z.object({
   realWorldStory: z.string(),
   educationalContext: z.string(),
 });
+
+/**
+ * Supported chemical elements in 2D skeletal representation
+ */
+export type AtomElement = 'C' | 'O' | 'N' | 'F' | 'Cl' | 'Br' | 'I' | 'S' | 'P' | 'H';
+
+/**
+ * Covalent bond orders
+ */
+export type BondOrder = 1 | 2 | 3;
+
+/**
+ * Bond rendering styles
+ */
+export type BondStyle = 'solid' | 'wedge' | 'dash';
+
+/**
+ * Atom Vertex Node in the 2D Molecular Graph
+ */
+export interface AtomNode {
+  readonly id: string;
+  element: AtomElement;
+  x: number;
+  y: number;
+  charge: number;
+  implicitH: number;
+  aromatic?: boolean;
+  inRing?: boolean;
+  ringIds?: number[];
+  hybridization?: 'sp3' | 'sp2' | 'sp';
+}
+
+/**
+ * Bond Edge in the 2D Molecular Graph
+ */
+export interface BondEdge {
+  readonly id: string;
+  source: string; // AtomNode id
+  target: string; // AtomNode id
+  order: BondOrder;
+  style?: BondStyle;
+  aromatic?: boolean;
+  inRing?: boolean;
+}
+
+/**
+ * Serialized Molecular Graph Data
+ */
+export interface MolecularGraphData {
+  atoms: AtomNode[];
+  bonds: BondEdge[];
+}
+

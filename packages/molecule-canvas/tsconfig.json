@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@quimicarush/chemistry-core": ["../chemistry-core/src/index.ts"],
+      "@quimicarush/gamification-engine": ["../gamification-engine/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*"]
+}
