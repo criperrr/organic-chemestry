@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { TAB_ORDER } from '../src/hooks/useTabGestures.js';
 import { useGameStore } from '../src/stores/useGameStore.js';
 import { parseIUPACName } from '@quimicarush/chemistry-core';
 import { datasetProvider } from '@quimicarush/chemistry-dataset';
@@ -109,5 +110,24 @@ describe('SandboxHub IUPAC Morphology Inspection Logic', () => {
 
     expect(hydrocarbons.length).toBeGreaterThan(5);
     expect(alcohols.length).toBeGreaterThan(5);
+  });
+});
+
+describe('Navegação por gesto entre abas', () => {
+  it('percorre as abas na ordem em que as barras as mostram', () => {
+    // A ordem é contrato compartilhado: a barra inferior, o trilho lateral e o
+    // gesto precisam concordar, senão deslizar "para a próxima" pula uma.
+    expect(TAB_ORDER).toEqual(['arcade', 'cacar', 'theory', 'sandbox']);
+  });
+
+  it('não sai das bordas ao deslizar além da primeira ou da última', () => {
+    const step = (from: (typeof TAB_ORDER)[number], direction: 1 | -1) => {
+      const next = TAB_ORDER.indexOf(from) + direction;
+      return next < 0 || next >= TAB_ORDER.length ? from : TAB_ORDER[next];
+    };
+    expect(step('arcade', -1)).toBe('arcade');
+    expect(step('sandbox', 1)).toBe('sandbox');
+    expect(step('arcade', 1)).toBe('cacar');
+    expect(step('sandbox', -1)).toBe('theory');
   });
 });

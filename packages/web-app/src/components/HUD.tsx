@@ -369,7 +369,6 @@ export const MobileTopBar: React.FC = () => {
     level,
     difficultyFilter,
     functionFilter,
-    setActiveTab,
     toggleInputMode,
     toggleSound,
     toggleFullscreen,
@@ -380,54 +379,14 @@ export const MobileTopBar: React.FC = () => {
   const isFilterActive = difficultyFilter !== 'todos' || functionFilter !== 'todos';
 
   return (
-    <header className="flex lg:hidden items-center justify-between h-13 px-2.5 sm:px-3.5 bg-[var(--md-sys-color-surface-container-low)] border-b border-[var(--md-sys-color-outline-variant)] sticky top-0 z-40 safe-top">
-      {/* Tab Segmented Switcher */}
-      <nav className="m3-segmented-container shrink min-w-0">
-        <button
-          type="button"
-          onClick={() => setActiveTab('arcade')}
-          className={`m3-segmented-item px-2 sm:px-2.5 py-1 text-xs font-semibold min-h-[34px] ${
-            activeTab === 'arcade' ? 'active' : ''
-          }`}
-          title="Treino [1]"
-        >
-          <Zap className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Treino</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('cacar')}
-          className={`m3-segmented-item px-2 sm:px-2.5 py-1 text-xs font-semibold min-h-[34px] ${
-            activeTab === 'cacar' ? 'active' : ''
-          }`}
-          title="Caça-Funções [2]"
-        >
-          <Crosshair className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Caçada</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('theory')}
-          className={`m3-segmented-item px-2 sm:px-2.5 py-1 text-xs font-semibold min-h-[34px] ${
-            activeTab === 'theory' ? 'active' : ''
-          }`}
-          title="Teoria [3]"
-        >
-          <BookOpen className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Teoria</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('sandbox')}
-          className={`m3-segmented-item px-2 sm:px-2.5 py-1 text-xs font-semibold min-h-[34px] ${
-            activeTab === 'sandbox' ? 'active' : ''
-          }`}
-          title="Laboratório [4]"
-        >
-          <FlaskConical className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Lab</span>
-        </button>
-      </nav>
+    <header className="flex lg:hidden items-center justify-between gap-2 min-h-[56px] px-2 sm:px-3.5 bg-[var(--md-sys-color-surface-container-low)] border-b border-[var(--md-sys-color-outline-variant)] sticky top-0 z-40 safe-top">
+      {/* Identity. The four tabs moved to the bottom navigation bar, where a
+          thumb reaches them; cramming them here forced 34px targets. */}
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="text-sm font-extrabold tracking-tight text-[var(--md-sys-color-on-surface)] truncate">
+          Química<span className="text-[var(--md-sys-color-primary)]">Rush</span>
+        </span>
+      </div>
 
       {/* Quick Action Icons, Streak & Control Sheet Trigger */}
       <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
@@ -447,7 +406,7 @@ export const MobileTopBar: React.FC = () => {
         <button
           type="button"
           onClick={toggleFullscreen}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] active:scale-95"
+          className="w-11 h-11 rounded-xl flex items-center justify-center text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] active:scale-95 shrink-0"
           aria-label="Alternar Modo Foco / Tela Cheia"
           title="Modo Foco / Tela Cheia [F]"
         >
@@ -462,7 +421,7 @@ export const MobileTopBar: React.FC = () => {
         <button
           type="button"
           onClick={openMobileControlSheet}
-          className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-mono font-bold transition-all cursor-pointer min-h-[36px] border active:scale-95 ${
+          className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-mono font-bold transition-all cursor-pointer min-h-[44px] border active:scale-95 ${
             isFilterActive
               ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] border-[var(--md-sys-color-primary)] ring-1 ring-[var(--md-sys-color-primary)]'
               : 'bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] border-[var(--md-sys-color-outline-variant)]'
@@ -481,7 +440,7 @@ export const MobileTopBar: React.FC = () => {
         <button
           type="button"
           onClick={openAchievementsModal}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] active:scale-95"
+          className="w-11 h-11 rounded-xl flex items-center justify-center text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] active:scale-95 shrink-0"
           aria-label="Conquistas"
         >
           <Trophy className="w-4 h-4 text-[var(--md-sys-color-warning)]" />
@@ -492,7 +451,7 @@ export const MobileTopBar: React.FC = () => {
           <button
             type="button"
             onClick={toggleInputMode}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] active:scale-95"
+            className="w-11 h-11 rounded-xl flex items-center justify-center text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] active:scale-95 shrink-0"
             aria-label="Alternar Modo de Entrada"
             title={inputMode === 'speedrunner' ? 'Alternar para Modo Slots' : 'Alternar para Modo Teclado'}
           >
@@ -508,7 +467,7 @@ export const MobileTopBar: React.FC = () => {
         <button
           type="button"
           onClick={toggleSound}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] active:scale-95"
+          className="w-11 h-11 rounded-xl flex items-center justify-center text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] active:scale-95 shrink-0"
           aria-label="Alternar Áudio"
         >
           {soundEnabled ? (

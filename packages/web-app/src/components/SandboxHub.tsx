@@ -15,7 +15,7 @@ import {
   Info,
   BookOpen,
 } from 'lucide-react';
-import { SmilesCanvas } from '@quimicarush/smiles-renderer';
+import { FluidMolecule } from './FluidMolecule.js';
 import {
   parseIUPACName,
   IUPAC_PRIORITY_ORDER,
@@ -341,11 +341,10 @@ export const SandboxHub: React.FC = () => {
               }}
               title="Clique para ampliar a projeção 2D"
             >
-              <SmilesCanvas
+              <FluidMolecule
                 smiles={inspectedMolecule.smiles}
-                width={360}
-                height={200}
-                theme="dark"
+                maxWidth={360}
+                aspect={0.56}
                 className="max-w-full group-hover:scale-[1.01] transition-transform duration-150"
               />
               <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/70 text-white/90 text-[10px] font-mono px-2 py-0.5 rounded flex items-center gap-1">

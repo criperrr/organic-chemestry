@@ -970,6 +970,9 @@ SkeletalCanvas(
   return (
     <div
       ref={containerRef}
+      // The editor owns horizontal swipes and two-finger trackpad gestures for
+      // panning the drawing; the host app must not read them as "next tab".
+      data-no-tab-swipe=""
       className={`relative w-full flex flex-col rounded-3xl overflow-hidden border border-[var(--md-sys-color-outline-variant)] bg-[var(--md-sys-color-surface-container)] shadow-sm select-none ${className}`}
     >
       {/* ------------------------------------------------------------------------- */}

@@ -1,5 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { NavigationRail, TelemetryRail, MobileTopBar, MobileControlSheet } from './components/HUD.js';
+import { MobileTabBar } from './components/MobileTabBar.js';
+import { useTabGestures } from './hooks/useTabGestures.js';
 import { SpeedrunnerInput } from './components/SpeedrunnerInput.js';
 import { SlotBuilder } from './components/SlotBuilder.js';
 import { FeedbackCard } from './components/FeedbackCard.js';
@@ -11,7 +13,7 @@ import { KeyboardShortcuts } from './components/KeyboardShortcuts.js';
 import { KeyboardCheatsheetModal } from './components/KeyboardCheatsheetModal.js';
 import { AchievementsModal } from './components/AchievementsModal.js';
 import { MoleculeZoomModal } from './components/MoleculeZoomModal.js';
-import { SmilesCanvas } from '@quimicarush/smiles-renderer';
+import { FluidMolecule } from './components/FluidMolecule.js';
 import { soundSynth } from '@quimicarush/gamification-engine';
 import { useGameStore } from './stores/useGameStore.js';
 import {
@@ -38,18 +40,6 @@ export const App: React.FC = () => {
     isGoldenMolecule,
   } = useGameStore();
 
-  const [isMobileScreen, setIsMobileScreen] = useState(() =>
-    typeof window !== 'undefined' ? window.innerWidth < 640 : false
-  );
-
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobileScreen(window.innerWidth < 640);
-    };
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
   // Synchronize browser native fullscreen change events with store state
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -66,6 +56,11 @@ export const App: React.FC = () => {
       document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
     };
   }, []);
+
+  // Horizontal swipe (phone) and two-finger horizontal swipe (trackpad) move
+  // between tabs, so neither input needs to aim at a control. Disabled in focus
+  // mode, where there is only one surface to be on.
+  useTabGestures(!isFullscreen);
 
   useEffect(() => {
     initSession();
@@ -88,7 +83,7 @@ export const App: React.FC = () => {
 
   return (
     <div
-      className={`min-h-screen flex flex-col bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] transition-all ${
+      className={`min-h-[100dvh] flex flex-col bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] transition-all ${
         screenShake ? 'animate-shake' : ''
       }`}
     >
@@ -199,11 +194,10 @@ export const App: React.FC = () => {
                       onClick={openMoleculeZoom}
                       title="Toque para ampliar a estrutura 2D"
                     >
-                      <SmilesCanvas
+                      <FluidMolecule
                         smiles={currentMolecule.smiles}
-                        width={isMobileScreen ? 320 : 380}
-                        height={isMobileScreen ? 190 : 220}
-                        theme="dark"
+                        maxWidth={380}
+                        aspect={0.58}
                         className="max-w-full group-hover:scale-[1.01] transition-transform duration-150"
                       />
                       <div className="absolute bottom-1 right-2 opacity-0 group-hover:opacity-100 sm:group-hover:opacity-100 transition-opacity bg-black/60 text-white/90 text-[10px] font-mono px-2 py-0.5 rounded pointer-events-none flex items-center gap-1">
@@ -250,6 +244,10 @@ export const App: React.FC = () => {
         {/* Right Rail: Telemetry & Filters (Desktop) - hidden in focus mode */}
         {!isFullscreen && <TelemetryRail />}
       </div>
+
+      {/* Bottom navigation (phones). Sits after the workspace so it is the last
+          landmark in reading order, and it is where the thumb already is. */}
+      {!isFullscreen && <MobileTabBar />}
     </div>
   );
 };

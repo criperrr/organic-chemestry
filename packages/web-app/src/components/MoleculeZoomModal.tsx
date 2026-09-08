@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { X, ZoomIn, Atom, Flame, Layers } from 'lucide-react';
-import { SmilesCanvas } from '@quimicarush/smiles-renderer';
+import { FluidMolecule } from './FluidMolecule.js';
 import { useGameStore } from '../stores/useGameStore.js';
 import { FUNCTION_LABELS } from './HUD.js';
 
@@ -68,11 +68,10 @@ export const MoleculeZoomModal: React.FC = () => {
         {/* Molecular Depiction Canvas (Large & Crisp) */}
         <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 bg-[var(--md-sys-color-surface-container-lowest)] overflow-hidden min-h-[260px] sm:min-h-[320px]">
           <div className="w-full max-w-sm flex items-center justify-center p-2 rounded-2xl bg-black/40 border border-[var(--md-sys-color-outline-variant)] shadow-inner">
-            <SmilesCanvas
+            <FluidMolecule
               smiles={currentMolecule.smiles}
-              width={420}
-              height={260}
-              theme="dark"
+              maxWidth={420}
+              aspect={0.62}
               className="max-w-full"
             />
           </div>

@@ -10,7 +10,7 @@ import {
   Keyboard,
   Trophy,
 } from 'lucide-react';
-import { SmilesCanvas } from '@quimicarush/smiles-renderer';
+import { FluidMolecule } from './FluidMolecule.js';
 import {
   FUNCTIONS_BY_PRIORITY,
   FUNCTION_GUIDE,
@@ -251,7 +251,7 @@ export const FunctionHunt: React.FC = () => {
         </div>
 
         <div className="w-full max-w-md">
-          <SmilesCanvas smiles={round.molecule.smiles} width={420} height={240} />
+          <FluidMolecule smiles={round.molecule.smiles} maxWidth={420} aspect={0.57} />
         </div>
 
         <p className="text-[12px] text-[var(--md-sys-color-on-surface-variant)] text-center">
