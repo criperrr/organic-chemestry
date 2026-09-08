@@ -172,7 +172,11 @@ export function calculateValences(graph: MolecularGraph): void {
     // and phosphorus is picked from their sigma-bond count, so adding it before
     // that decision would promote thiophene's S to valence 4 and invent an H.
     const sigmaValence = explicitValence;
-    if (atom.aromatic && !neighbors.some(n => n.order > 1)) {
+    if (
+      atom.aromatic &&
+      atom.explicitHCount === undefined &&
+      !neighbors.some(n => n.order > 1)
+    ) {
       explicitValence += 1;
     }
 
@@ -195,6 +199,9 @@ export function calculateValences(graph: MolecularGraph): void {
 
     if (atom.element === 'H') {
       atom.implicitH = 0;
+    } else if (atom.explicitHCount !== undefined) {
+      // A bracketed atom states its own hydrogen count; nothing to infer.
+      atom.implicitH = atom.explicitHCount;
     } else {
       atom.implicitH = Math.max(0, target - explicitValence);
     }
@@ -326,7 +333,7 @@ export function computeSSSR(graph: MolecularGraph): string[][] {
 
   for (const bond of bonds) {
     const path = findShortestCycleWithEdge(graph, bond.source, bond.target, bond.id);
-    if (path && path.length >= 3 && path.length <= 12) {
+    if (path && path.length >= 3) {
       const key = canonicalCycleKey(path);
       if (!seenKeys.has(key)) {
         seenKeys.add(key);
@@ -408,6 +415,20 @@ export function perceiveRingsAndAromaticity(graph: MolecularGraph): Ring[] {
   const rawCycles = computeSSSR(graph);
   const rings: Ring[] = [];
 
+  // Mark ring membership for every cycle up front. The aromaticity test looks at
+  // whether a *neighbour* is a ring atom, and doing both in one pass made the
+  // answer depend on the order the cycles happened to come in: the first ring of
+  // Kekulé naphthalene was judged before the second one existed.
+  rawCycles.forEach((atomIds, idx) => {
+    atomIds.forEach(id => {
+      const atom = graph.atoms.get(id);
+      if (atom) {
+        atom.inRing = true;
+        atom.ringIds = [...new Set([...(atom.ringIds ?? []), idx])];
+      }
+    });
+  });
+
   rawCycles.forEach((atomIds, idx) => {
     let isBenzene = false;
     let isAromatic = false;
@@ -418,6 +439,66 @@ export function perceiveRingsAndAromaticity(graph: MolecularGraph): Ring[] {
       const v = atomIds[(i + 1) % atomIds.length];
       const b = graph.getBondBetween(u, v);
       if (b) bondIds.push(b.id);
+    }
+
+    // Aromaticity is not a property of six-membered rings only. Computing it
+    // just for benzene left every five-membered aromatic ring flagged
+    // non-aromatic, so the heterocycle table matched the saturated entry:
+    // thiophene answered to "tiolano" and pyridine's radical to "piperidinil".
+    if (atomIds.every(id => graph.atoms.get(id)?.aromatic === true)) {
+      isAromatic = true;
+    }
+
+    // The same ring can arrive written in Kekulé form, with plain upper-case
+    // atoms and explicit alternating double bonds — that is what OPSIN emits and
+    // what a student draws by hand. Without this, "C1=CC=NC=C1" was a diene
+    // heterocycle rather than pyridine.
+    if (!isAromatic && (atomIds.length === 5 || atomIds.length === 6)) {
+      const ringBondSet = new Set(bondIds);
+      const ringDoubles = bondIds.filter(bid => graph.bonds.get(bid)?.order === 2).length;
+      const elements = atomIds.map(id => graph.atoms.get(id)?.element ?? 'C');
+      // Only a double bond leaving the ring system disqualifies aromaticity (a
+      // cyclohexadienone). A double bond into a *fused* ring does not: it is
+      // how Kekulé naphthalene is written, and treating it as exocyclic left
+      // half of that molecule non-aromatic.
+      const hasExocyclicDouble = atomIds.some(id =>
+        graph
+          .getNeighbors(id)
+          .some(
+            n =>
+              n.order === 2 &&
+              !ringBondSet.has(n.bondId) &&
+              !graph.atoms.get(n.neighborId)?.inRing
+          )
+      );
+      const ringDoubleCountOf = (id: string) =>
+        graph.getNeighbors(id).filter(n => ringBondSet.has(n.bondId) && n.order === 2).length;
+
+      if (!hasExocyclicDouble) {
+        // Every atom carrying exactly one double bond to a ring neighbour is
+        // the general sp2 test. Counting only bonds *inside this ring* missed
+        // naphthalene, whose fusion carbons double-bond into the other ring.
+        const ringNeighbourDoubles = (id: string) =>
+          graph
+            .getNeighbors(id)
+            .filter(n => n.order === 2 && graph.atoms.get(n.neighborId)?.inRing).length;
+
+        if (
+          atomIds.length === 6 &&
+          elements.every(el => el === 'C' || el === 'N') &&
+          atomIds.every(id => ringNeighbourDoubles(id) === 1)
+        ) {
+          isAromatic = true;
+        } else if (atomIds.length === 5 && ringDoubles === 2) {
+          // One heteroatom donates its lone pair and carries no ring double
+          // bond: pyrrole, furan, thiophene and their aza analogues.
+          const donors = atomIds.filter(
+            (id, i) =>
+              ['N', 'O', 'S'].includes(elements[i]) && ringDoubleCountOf(id) === 0
+          );
+          if (donors.length === 1) isAromatic = true;
+        }
+      }
     }
 
     if (atomIds.length === 6) {
@@ -445,8 +526,6 @@ export function perceiveRingsAndAromaticity(graph: MolecularGraph): Ring[] {
     atomIds.forEach(id => {
       const atom = graph.atoms.get(id);
       if (atom) {
-        atom.inRing = true;
-        atom.ringIds = [...(atom.ringIds ?? []), idx];
         if (isAromatic) {
           atom.aromatic = true;
           atom.hybridization = 'sp2';
@@ -473,7 +552,16 @@ export function perceiveRingsAndAromaticity(graph: MolecularGraph): Ring[] {
         const r2 = rings[j];
         if (r1.atomIds.length === 6 && r2.atomIds.length === 6) {
           const common = r1.atomIds.filter(id => r2.atomIds.includes(id));
-          if (common.length === 2) {
+          // Two conditions the original test left implicit and therefore never
+          // checked: the shared atoms must be *adjacent* (otherwise the pair is
+          // a bridged bicyclic such as bicyclo[2.2.2]octane, not a fused pair),
+          // and the system must actually be aromatic — decalin shares an
+          // adjacent edge too, and it was coming out as "naftaleno".
+          const sharedAdjacent =
+            common.length === 2 && graph.getBondBetween(common[0], common[1]) !== undefined;
+          const bothAromatic =
+            [...r1.atomIds, ...r2.atomIds].every(id => graph.atoms.get(id)?.aromatic === true);
+          if (sharedAdjacent && bothAromatic) {
             const allC = [...r1.atomIds, ...r2.atomIds].every(
               id => graph.atoms.get(id)?.element === 'C'
             );
@@ -521,7 +609,10 @@ export function detectFunctionalGroups(
     const atom = graph.atoms.get(oAtomId);
     if (!atom || atom.element !== 'O') return false;
     const neighbors = graph.getNeighbors(oAtomId);
-    if (neighbors.length === 1) return true; // terminal OH or O-
+    // Order matters: a carbonyl oxygen is also a one-neighbour oxygen, and
+    // counting it as a hydroxyl invented alcohols on carbonyl carbons that the
+    // carbonyl pass had not claimed.
+    if (neighbors.length === 1) return neighbors[0].order === 1; // terminal OH or O-
     if (neighbors.length === 2 && neighbors.some(n => graph.atoms.get(n.neighborId)?.element === 'H')) {
       return true;
     }
@@ -626,6 +717,24 @@ export function detectFunctionalGroups(
     const amideEdge = neighbors.find(
       n => n.order === 1 && graph.atoms.get(n.neighborId)?.element === 'N'
     );
+    // A lactam — carbonyl and nitrogen both in the same ring — is named from the
+    // ring skeleton with an "-ona" suffix (pirrolidin-2-ona), not as an amide;
+    // "pirrolidinamida" described a ring with an extra NH2 hanging off it.
+    const isLactam =
+      amideEdge !== undefined &&
+      atom.inRing === true &&
+      graph.atoms.get(amideEdge.neighborId)?.inRing === true &&
+      rings.some(r => r.atomIds.includes(atom.id) && r.atomIds.includes(amideEdge.neighborId));
+    if (isLactam) {
+      detected.push({
+        type: 'cetona',
+        carbonId: atom.id,
+        atomIds: [atom.id, oId],
+        priority: IUPAC_PRIORITY_ORDER.cetona,
+      });
+      processedCarbons.add(atom.id);
+      continue;
+    }
     if (amideEdge) {
       detected.push({
         type: 'amida',
@@ -1071,13 +1180,26 @@ const TERMINAL_SUFFIX_FUNCTIONS: ReadonlySet<OrganicFunction> = new Set<OrganicF
   'aldeido',
 ]);
 
+/**
+ * Upper bound on enumerated candidate chains.
+ *
+ * The enumeration is exponential in the branching of the acyclic skeleton, and
+ * it used to run unbounded from every carbon — enough to freeze the live
+ * builder on a large, heavily branched drawing. The cap keeps the worst case
+ * finite; the chains it drops are the deep tail of an already-sorted-by-merit
+ * search, and every candidate that can win on length is reached long before it.
+ */
+const MAX_CANDIDATE_PATHS = 20000;
+
 function findAllSimplePaths(
   graph: MolecularGraph,
   u: string,
   currentPath: string[],
   visited: Set<string>,
-  paths: string[][]
+  paths: string[][],
+  excludedChainCarbons: ReadonlySet<string> = new Set()
 ): void {
+  if (paths.length >= MAX_CANDIDATE_PATHS) return;
   currentPath.push(u);
   visited.add(u);
 
@@ -1087,14 +1209,19 @@ function findAllSimplePaths(
       const a = graph.atoms.get(e.neighborId);
       // Parent chains never run *through* a ring: the ring is either the parent
       // or a substituent, never half of an acyclic chain (IUPAC P-52.2.8).
-      return a?.element === 'C' && !a.inRing && !visited.has(e.neighborId);
+      return (
+        a?.element === 'C' &&
+        !a.inRing &&
+        !excludedChainCarbons.has(e.neighborId) &&
+        !visited.has(e.neighborId)
+      );
     });
 
   if (neighbors.length === 0) {
     paths.push([...currentPath]);
   } else {
     for (const n of neighbors) {
-      findAllSimplePaths(graph, n.neighborId, currentPath, visited, paths);
+      findAllSimplePaths(graph, n.neighborId, currentPath, visited, paths, excludedChainCarbons);
     }
   }
 
@@ -1151,8 +1278,18 @@ export function selectParentStructure(
     return ringToParent(graph, ringPrimary, rings);
   }
 
+  // A nitrile that is not the principal group is cited as the prefix "ciano",
+  // which *includes* its carbon. Leaving that carbon eligible for the parent
+  // chain made the chain run into the C≡N and then name the nitrogen "amino",
+  // turning a nitrile into an amine.
+  const prefixedNitrileCarbons = new Set(
+    primaryFunction === 'nitrila'
+      ? []
+      : detectedFunctions.filter(d => d.type === 'nitrila').map(d => d.carbonId)
+  );
+
   const acyclicCarbons = Array.from(graph.atoms.values()).filter(
-    a => a.element === 'C' && !a.inRing
+    a => a.element === 'C' && !a.inRing && !prefixedNitrileCarbons.has(a.id)
   );
 
   // (b) Principal group on a carbon hanging off a ring, with no acyclic chain to
@@ -1199,9 +1336,25 @@ export function selectParentStructure(
     return { type: 'chain', atomIds: [acyclicCarbons[0].id] };
   }
 
+  // Every maximal chain ends at a terminal carbon, so starting the walk only
+  // from those loses no candidate and cuts the enumeration by a large factor.
+  const acyclicDegree = (id: string) =>
+    graph.getNeighbors(id).filter(n => {
+      const a = graph.atoms.get(n.neighborId);
+      return a?.element === 'C' && !a.inRing && !prefixedNitrileCarbons.has(n.neighborId);
+    }).length;
+  const terminals = acyclicCarbons.filter(c => acyclicDegree(c.id) <= 1);
+
   const candidatePaths: string[][] = [];
-  for (const carbon of acyclicCarbons) {
-    findAllSimplePaths(graph, carbon.id, [], new Set<string>(), candidatePaths);
+  for (const carbon of terminals.length > 0 ? terminals : acyclicCarbons) {
+    findAllSimplePaths(
+      graph,
+      carbon.id,
+      [],
+      new Set<string>(),
+      candidatePaths,
+      prefixedNitrileCarbons
+    );
   }
   if (candidatePaths.length === 0) {
     return { type: 'chain', atomIds: [acyclicCarbons[0].id] };
@@ -1458,9 +1611,41 @@ export function numberParentStructure(
 
 export interface ClassifiedSubstituent {
   locant: number;
+  /**
+   * Italic locant used instead of the numeral, as in the "N" of N-metilanilina.
+   * Carrying it here lets N-substituents be alphabetised together with the
+   * carbon ones, which is what IUPAC asks for and what emitting them as a
+   * separate leading block prevented.
+   */
+  locantLabel?: string;
   name: string;             // e.g. 'metil', 'cloro', '(clorometil)'
   sortKey: string;          // alphabetisation key, e.g. 'metil', 'clorometil'
   isComplex: boolean;
+}
+
+/**
+ * Alphanumerical ordering key (IUPAC P-14.5.2): multiplying prefixes and the
+ * italicised structural markers do not count. "terc-butil" files under B.
+ */
+function alphabetisationKey(sortKey: string): string {
+  let key = sortKey.replace(/[()]/g, '');
+  // Locants and italics can alternate ("2-terc-butilciclopentil"), so peel them
+  // until nothing is left to peel. This has to happen *before* the orthographic
+  // hyphens go, or "terc-butil" collapses to "tercbutil" and files under T.
+  for (;;) {
+    const next = key
+      .replace(/^\d+(,\d+)*-/, '')
+      .replace(/^(terc|sec|n)-/, '');
+    if (next === key) break;
+    key = next;
+  }
+  // "ciclo-hexil" alphabetises as "ciclohexil": the Novo Acordo hyphen is
+  // orthography, not morphology, and leaving it in sorted it before
+  // "ciclobutil".
+  // Alphanumerical order compares letters first — inner locants are only a
+  // tiebreak, and leaving them in put "1-metil-3-oxopropil" before "metilamino"
+  // because the digits sorted ahead of the letters.
+  return key.replace(/[\d,-]/g, '');
 }
 
 function getSubtreeAtoms(graph: MolecularGraph, root: string, exclude: string): string[] {
@@ -1491,18 +1676,47 @@ const HALOGEN_PREFIX: Record<string, string> = {
 };
 
 /** Alkyl radical names indexed by carbon count (unbranched). */
-const ALKYL_NAMES: Record<number, string> = {
-  1: 'metil',
-  2: 'etil',
-  3: 'propil',
-  4: 'butil',
-  5: 'pentil',
-  6: 'hexil',
-  7: 'heptil',
-  8: 'octil',
-  9: 'nonil',
-  10: 'decil',
+const STEM_NAMES: Record<number, string> = {
+  1: 'met',
+  2: 'et',
+  3: 'prop',
+  4: 'but',
+  5: 'pent',
+  6: 'hex',
+  7: 'hept',
+  8: 'oct',
+  9: 'non',
+  10: 'dec',
+  11: 'undec',
+  12: 'dodec',
+  13: 'tridec',
+  14: 'tetradec',
+  15: 'pentadec',
+  16: 'hexadec',
+  17: 'heptadec',
+  18: 'octadec',
+  19: 'nonadec',
+  20: 'icos',
+  21: 'henicos',
+  22: 'docos',
+  23: 'tricos',
+  24: 'tetracos',
+  25: 'pentacos',
+  26: 'hexacos',
+  27: 'heptacos',
+  28: 'octacos',
+  29: 'nonacos',
+  30: 'triacont',
 };
+
+/**
+ * Unbranched alkyl radical names, derived from the stem table so the two can
+ * never drift apart. They used to stop at decil, which is why an undecyl branch
+ * fell through to the invented word "carbil".
+ */
+const ALKYL_NAMES: Record<number, string> = Object.fromEntries(
+  Object.entries(STEM_NAMES).map(([n, stem]) => [Number(n), `${stem}il`])
+);
 
 /**
  * Names a saturated all-carbon branch, honouring the retained contracted names
@@ -1542,8 +1756,11 @@ function nameSimpleAlkyl(
     if (degreeIn(rootId) === 1 && second && degreeIn(second) === 4) return 'neopentil';
   }
 
-  // Unbranched only: every carbon has at most two in-branch neighbours.
-  const isUnbranched = branchCarbons.every(id => degreeIn(id) <= 2);
+  // Unbranched *and* attached at a terminus: "pentil" means the parent hangs
+  // off carbon 1. A five-carbon branch joined at its middle carbon satisfied
+  // the old degree test and was named "pentil" too, which describes a
+  // different molecule.
+  const isUnbranched = branchCarbons.every(id => degreeIn(id) <= 2) && degreeIn(rootId) <= 1;
   return isUnbranched ? ALKYL_NAMES[k] ?? null : null;
 }
 
@@ -1557,8 +1774,24 @@ function longestBranchChain(
   branchCarbons: Set<string>
 ): string[] {
   let best: string[] = [rootId];
+  const unsaturationOf = (path: string[]) => {
+    let count = 0;
+    for (let i = 0; i < path.length - 1; i++) {
+      const bond = graph.getBondBetween(path[i], path[i + 1]);
+      if (bond && bond.order > 1) count++;
+    }
+    return count;
+  };
   const walk = (id: string, path: string[], seen: Set<string>) => {
-    if (path.length > best.length) best = [...path];
+    // Equal-length candidates are broken by unsaturation: for an isopropenyl
+    // group both branches are two carbons long, and picking the methyl left the
+    // double bond unexpressed.
+    if (
+      path.length > best.length ||
+      (path.length === best.length && unsaturationOf(path) > unsaturationOf(best))
+    ) {
+      best = [...path];
+    }
     for (const n of graph.getNeighbors(id)) {
       if (n.neighborId === attachedTo || seen.has(n.neighborId)) continue;
       if (!branchCarbons.has(n.neighborId)) continue;
@@ -1578,6 +1811,137 @@ function longestBranchChain(
  * functionalised or nested — producing a complex radical in parentheses when the
  * branch itself carries substituents (IUPAC P-29.2 / P-14.5.2).
  */
+
+/**
+ * Signals that a branch contains a ring the engine has no vocabulary for.
+ *
+ * Returning `null` was not an option: the caller drops null substituents, which
+ * is exactly how a whole ring used to vanish from a name while the formula
+ * stayed right. Throwing forces `analyzeMolecularGraph` to refuse out loud.
+ */
+export class UnnameableBranchError extends Error {
+  constructor(readonly atomIds: string[], message: string) {
+    super(message);
+    this.name = 'UnnameableBranchError';
+  }
+}
+
+/**
+ * Names a ring cited as a substituent, with its attachment locant and its own
+ * substituents.
+ *
+ * Three separate defects lived here before. Every aromatic ring returned the
+ * constant "fenil", so pyridine and thiophene branches were named as benzene;
+ * ring radicals carried no attachment locant, so "pirrolidinil" let a reader
+ * (and OPSIN) attach through the nitrogen; and because the return value was a
+ * constant, any substituent sitting on that ring was silently discarded.
+ */
+function nameRingRadical(
+  graph: MolecularGraph,
+  rootId: string,
+  attachedTo: string,
+  rings: Ring[],
+  depth: number
+): ClassifiedSubstituent | null {
+  const hostRing = rings.find(r => r.atomIds.includes(rootId));
+  if (!hostRing) return null;
+
+  const ringIds = hostRing.atomIds;
+  const n = ringIds.length;
+  const ringSet = new Set(ringIds);
+  const isHetero = ringHasHeteroatoms(graph, ringIds);
+  const retained = isHetero ? identifyHeterocycle(graph, ringIds, hostRing.isAromatic) : null;
+
+  if (isHetero && !retained) {
+    throw new UnnameableBranchError(
+      ringIds,
+      'Anel heterocíclico substituinte fora da tabela de nomes que eu conheço.'
+    );
+  }
+  const sharesAtomsWithAnotherRing = rings.some(
+    r => r !== hostRing && r.atomIds.some(id => ringSet.has(id))
+  );
+  if (hostRing.isNaphthalene || sharesAtomsWithAnotherRing || !STEM_NAMES[n]) {
+    // A fused or bridged ring has no radical name here — and walking into one
+    // would recurse forever, each ring naming the other as its substituent.
+    throw new UnnameableBranchError(
+      ringIds,
+      'Anel substituinte fundido ou fora da tabela que eu conheço.'
+    );
+  }
+
+  // --- numbering -------------------------------------------------------------
+  // Carbocycle: the attachment atom is position 1 by definition. Heterocycle:
+  // the heteroatom is position 1 and the attachment gets a real locant, which
+  // is precisely the information that used to be missing.
+  const heteroPositions = ringIds
+    .map((id, index) => ({ id, index }))
+    .filter(({ id }) => graph.atoms.get(id)?.element !== 'C')
+    .map(({ index }) => index);
+  const starts = retained ? heteroPositions : [ringIds.indexOf(rootId)];
+
+  let best: { numbering: Map<string, number>; attach: number; subLocants: number[] } | null = null;
+  for (const start of starts) {
+    for (const step of [1, -1]) {
+      const order: string[] = [];
+      for (let i = 0; i < n; i++) order.push(ringIds[(start + step * i + n * n) % n]);
+      const numbering = new Map<string, number>();
+      order.forEach((id, idx) => numbering.set(id, idx + 1));
+
+      const subLocants: number[] = [];
+      for (const id of order) {
+        for (const nb of graph.getNeighbors(id)) {
+          if (nb.neighborId === attachedTo || ringSet.has(nb.neighborId)) continue;
+          if (graph.atoms.get(nb.neighborId)?.element === 'H') continue;
+          subLocants.push(numbering.get(id)!);
+        }
+      }
+      subLocants.sort((a, b) => a - b);
+      const attach = numbering.get(rootId)!;
+
+      const better =
+        !best ||
+        attach < best.attach ||
+        (attach === best.attach && compareLocantArrays(subLocants, best.subLocants) < 0);
+      if (better) best = { numbering, attach, subLocants };
+    }
+  }
+  if (!best) return null;
+
+  // --- substituents carried by the ring --------------------------------------
+  const innerSubs: ClassifiedSubstituent[] = [];
+  for (const id of ringIds) {
+    for (const nb of graph.getNeighbors(id)) {
+      if (nb.neighborId === attachedTo || ringSet.has(nb.neighborId)) continue;
+      if (graph.atoms.get(nb.neighborId)?.element === 'H') continue;
+      const sub = nameBranch(graph, nb.neighborId, id, rings, depth + 1);
+      if (sub) innerSubs.push({ ...sub, locant: best.numbering.get(id)! });
+    }
+  }
+
+  // --- assembly --------------------------------------------------------------
+  let core: string;
+  if (retained) {
+    core = `${retained.replace(/[aeiou]$/, '')}-${best.attach}-il`;
+  } else if (hostRing.isBenzene) {
+    core = 'fenil';
+  } else {
+    core = `${joinWithNovoAcordo('ciclo', STEM_NAMES[n]!)}il`;
+  }
+
+  const prefix = formatGroupedSubstituents(innerSubs);
+  const inner = prefix ? joinWithNovoAcordo(prefix, core) : core;
+  // Enclosing marks whenever the radical name carries locants of its own, so
+  // they can never be read as the parent's.
+  const needsBrackets = /\d/.test(inner);
+  return {
+    locant: 0,
+    name: needsBrackets ? `(${inner})` : inner,
+    sortKey: inner,
+    isComplex: needsBrackets,
+  };
+}
+
 function nameBranch(
   graph: MolecularGraph,
   rootId: string,
@@ -1604,6 +1968,35 @@ function nameBranch(
     if (heavy.length === 0) {
       return { locant: 0, name: 'hidroxi', sortKey: 'hidroxi', isComplex: false };
     }
+    // Acyloxy: -O-CO-R is "acetoxi" / "…anoiloxi". Falling through to the
+    // alkoxy rule below described aspirin's acetyl group as "1-oxoetoxi" —
+    // structurally right, but not a name any exam accepts.
+    const rIdCandidate = heavy[0].neighborId;
+    const acylCarbonyl = graph
+      .getNeighbors(rIdCandidate)
+      .find(n => n.order === 2 && graph.atoms.get(n.neighborId)?.element === 'O');
+    if (acylCarbonyl && graph.atoms.get(rIdCandidate)?.element === 'C') {
+      const acylCarbons = getSubtreeAtoms(graph, rIdCandidate, rootId).filter(
+        id => graph.atoms.get(id)?.element === 'C'
+      );
+      const acylAtoms = getSubtreeAtoms(graph, rIdCandidate, rootId);
+      const unbranchedSaturated =
+        acylCarbons.every(
+          id =>
+            graph.getNeighbors(id).filter(n => graph.atoms.get(n.neighborId)?.element === 'C')
+              .length <= 2
+        ) &&
+        acylAtoms.every(
+          id =>
+            graph.atoms.get(id)?.element === 'C' || id === acylCarbonyl.neighborId
+        );
+      const acylStem = STEM_NAMES[acylCarbons.length];
+      if (unbranchedSaturated && acylStem) {
+        const label = acylCarbons.length === 2 ? 'acetoxi' : `${acylStem}anoiloxi`;
+        return { locant: 0, name: label, sortKey: label, isComplex: false };
+      }
+    }
+
     // Alkoxy / aryloxy: -O-R
     const rId = heavy[0].neighborId;
     const rAtom = graph.atoms.get(rId);
@@ -1612,11 +2005,14 @@ function nameBranch(
     }
     const rBranch = nameBranch(graph, rId, rootId, rings, depth + 1);
     const rName = (rBranch?.sortKey ?? 'metil').replace(/^\(|\)$/g, '');
-    // Chain radicals contract their "-il" into "-oxi" even when substituted
-    // (2-cloroetil -> 2-cloroetoxi). Aryl radicals keep it: benzil -> benziloxi.
+    // Saturated chain radicals contract their "-il" into "-oxi" even when
+    // substituted (2-cloroetil -> 2-cloroetoxi). Aryl radicals keep it
+    // (benzil -> benziloxi), and so do unsaturated ones: contracting "etenil"
+    // gave "etenoxi", a group that does not exist — it is "(etenil)oxi".
     const NEVER_CONTRACT = new Set(['benzil', 'fenil']);
+    const isUnsaturatedRadical = /(en|in)il$/.test(rName);
     const alkoxi =
-      rName.endsWith('il') && !NEVER_CONTRACT.has(rName)
+      rName.endsWith('il') && !NEVER_CONTRACT.has(rName) && !isUnsaturatedRadical
         ? `${rName.slice(0, -2)}oxi`
         : `${rName}oxi`;
     // A composite radical must stay bracketed, or its locants read as the
@@ -1642,6 +2038,50 @@ function nameBranch(
     if (carbons.length === 0) {
       return { locant: 0, name: 'amino', sortKey: 'amino', isComplex: false };
     }
+
+    // Acylated nitrogen: -NH-CO-R is "R-amido", never "R-ilamino". Naming it as
+    // a plain alkylamino group moved the carbonyl oxygen out of the molecule.
+    const acyl = carbons.find(
+      c =>
+        graph
+          .getNeighbors(c.neighborId)
+          .some(n => n.order === 2 && graph.atoms.get(n.neighborId)?.element === 'O')
+    );
+    if (acyl) {
+      const acylCarbons = getSubtreeAtoms(graph, acyl.neighborId, rootId).filter(
+        id => graph.atoms.get(id)?.element === 'C'
+      );
+      const stem = STEM_NAMES[acylCarbons.length];
+      const acylAtoms = getSubtreeAtoms(graph, acyl.neighborId, rootId);
+      const carbonylOxygens = graph
+        .getNeighbors(acyl.neighborId)
+        .filter(n => n.order === 2 && graph.atoms.get(n.neighborId)?.element === 'O')
+        .map(n => n.neighborId);
+      // Unbranched, and carrying nothing but its own carbonyl oxygen: a
+      // hydroxyl further down the acyl chain was being dropped silently.
+      const simple =
+        acylCarbons.every(
+          id =>
+            graph.getNeighbors(id).filter(n => graph.atoms.get(n.neighborId)?.element === 'C')
+              .length <= 2
+        ) &&
+        acylAtoms.every(
+          id => graph.atoms.get(id)?.element === 'C' || carbonylOxygens.includes(id)
+        ) &&
+        acylCarbons.every(id =>
+          graph
+            .getNeighbors(id)
+            .every(n => n.order === 1 || carbonylOxygens.includes(n.neighborId))
+        );
+      if (stem && simple) {
+        const label = `${stem}anamido`;
+        return { locant: 0, name: `(${label})`, sortKey: label, isComplex: true };
+      }
+      throw new UnnameableBranchError(
+        [rootId, acyl.neighborId],
+        'Grupo acilamino ramificado fora do que eu sei nomear.'
+      );
+    }
     const parts = carbons
       .map(c => nameBranch(graph, c.neighborId, rootId, rings, depth + 1)?.sortKey ?? 'metil')
       .sort();
@@ -1655,37 +2095,35 @@ function nameBranch(
   const branchAtoms = getSubtreeAtoms(graph, rootId, attachedTo);
   const branchSet = new Set(branchAtoms);
   const branchCarbons = branchAtoms.filter(id => graph.atoms.get(id)?.element === 'C');
-
-  // Aromatic ring branch → fenil / benzil
-  if (rootAtom.aromatic) {
-    return { locant: 0, name: 'fenil', sortKey: 'fenil', isComplex: false };
-  }
-
-  // Ring branch. Without this the three carbons of a cyclopropyl group read as
-  // an isopropyl chain — and a ring holding a heteroatom must never be named as
-  // a plain cycloalkyl, or N-methylpyrrolidine becomes "ciclopentil".
-  if (rootAtom.inRing) {
-    const hostRing = rings.find(r => r.atomIds.includes(rootId));
-    if (hostRing) {
-      if (ringHasHeteroatoms(graph, hostRing.atomIds)) {
-        const retained = identifyHeterocycle(graph, hostRing.atomIds, hostRing.isAromatic);
-        if (retained) {
-          const radical = `${retained.replace(/[aeiou]$/, '')}il`;
-          return { locant: 0, name: radical, sortKey: radical, isComplex: false };
-        }
-      } else if (!hostRing.isAromatic) {
-        const stem = STEM_NAMES[hostRing.atomIds.length];
-        if (stem) {
-          const cycloName = `${joinWithNovoAcordo('ciclo', stem)}il`;
-          return { locant: 0, name: cycloName, sortKey: cycloName, isComplex: false };
-        }
-      }
-    }
-  }
-  const attachedAromaticRing = rings.find(
-    r => r.isAromatic && branchCarbons.some(id => r.atomIds.includes(id))
+  const hasMultipleBond = branchAtoms.some(id =>
+    graph.getNeighbors(id).some(n => branchSet.has(n.neighborId) && n.order > 1)
   );
-  if (attachedAromaticRing && branchCarbons.length === 7) {
+
+  // Ring branch — carbocyclic or heterocyclic, aromatic or not. This test must
+  // come before anything that assumes an aromatic ring is benzene.
+  if (rootAtom.inRing) {
+    const asRing = nameRingRadical(graph, rootId, attachedTo, rings, depth);
+    if (asRing) return asRing;
+  }
+
+  // Benzyl: a CH2 bridging the parent to an otherwise bare benzene ring.
+  // The ring has to be *inside* the branch. Testing only "a neighbour of the
+  // root is in a benzene ring" also matched a branch hanging off a benzene
+  // parent, and a styryl group on benzene answered to "benzilbenzeno".
+  const benzylRing = rings.find(
+    r =>
+      r.isBenzene &&
+      !r.atomIds.includes(attachedTo) &&
+      r.atomIds.every(id => branchSet.has(id)) &&
+      graph.getNeighbors(rootId).some(n => r.atomIds.includes(n.neighborId))
+  );
+  if (
+    benzylRing &&
+    branchCarbons.length === 7 &&
+    !rootAtom.inRing &&
+    !hasMultipleBond &&
+    graph.getNeighbors(rootId).filter(n => n.neighborId !== attachedTo).length === 1
+  ) {
     return { locant: 0, name: 'benzil', sortKey: 'benzil', isComplex: false };
   }
 
@@ -1713,8 +2151,28 @@ function nameBranch(
     const amideN = graph
       .getNeighbors(rootId)
       .find(n => n.order === 1 && graph.atoms.get(n.neighborId)?.element === 'N');
-    if (amideN) {
-      return { locant: 0, name: 'carbamoil', sortKey: 'carbamoil', isComplex: false };
+    // "carbamoil" is H2N-CO- exactly. Any other acyl group on that nitrogen
+    // makes a different prefix, and answering "carbamoil" for all of them
+    // renamed a propanoylamino branch after urea.
+    if (amideN && branchCarbons.length === 1) {
+      const nHasOtherCarbon = graph
+        .getNeighbors(amideN.neighborId)
+        .some(n => n.neighborId !== rootId && graph.atoms.get(n.neighborId)?.element === 'C');
+      if (!nHasOtherCarbon) {
+        return { locant: 0, name: 'carbamoil', sortKey: 'carbamoil', isComplex: false };
+      }
+    }
+    // An acyl halide branch is "clorocarbonil", not "formil": naming it after
+    // the aldehyde threw the halogen away entirely.
+    const acylHalide = graph
+      .getNeighbors(rootId)
+      .find(n => ['F', 'Cl', 'Br', 'I'].includes(graph.atoms.get(n.neighborId)?.element ?? ''));
+    if (acylHalide) {
+      const halogen = graph.atoms.get(acylHalide.neighborId)!.element;
+      const prefix =
+        halogen === 'F' ? 'fluor' : halogen === 'Br' ? 'bromo' : halogen === 'I' ? 'iodo' : 'cloro';
+      const label = `${prefix}carbonil`;
+      return { locant: 0, name: `(${label})`, sortKey: label, isComplex: true };
     }
     if (branchCarbons.length === 1) {
       return { locant: 0, name: 'formil', sortKey: 'formil', isComplex: false };
@@ -1731,12 +2189,12 @@ function nameBranch(
     const el = graph.atoms.get(id)?.element;
     return el !== undefined && el !== 'C' && el !== 'H';
   });
-  const hasMultipleBond = branchAtoms.some(id =>
-    graph.getNeighbors(id).some(n => branchSet.has(n.neighborId) && n.order > 1)
-  );
 
-  // Plain saturated alkyl → retained/systematic simple name
-  if (heteroAtoms.length === 0 && !hasMultipleBond) {
+  // Plain saturated alkyl → retained/systematic simple name. A branch that
+  // reaches into a ring is never "simple": walking its carbons as a chain
+  // turned cyclohexylmethyl into "heptil".
+  const branchTouchesRing = branchAtoms.some(id => graph.atoms.get(id)?.inRing);
+  if (heteroAtoms.length === 0 && !hasMultipleBond && !branchTouchesRing) {
     const simple = nameSimpleAlkyl(graph, rootId, attachedTo, branchCarbons);
     if (simple) {
       return { locant: 0, name: simple, sortKey: simple, isComplex: false };
@@ -1748,7 +2206,17 @@ function nameBranch(
     return { locant: 0, name: 'alquil', sortKey: 'alquil', isComplex: false };
   }
 
-  const carbonSet = new Set(branchCarbons);
+  // The radical's own chain stops at the ring boundary; ring atoms are picked up
+  // below as sub-substituents and named by nameRingRadical. A nitrile carbon is
+  // excluded for the same reason it is excluded from the parent chain: it
+  // belongs to the "ciano" prefix, and running the chain through it made the
+  // nitrogen come out as an amine.
+  const isNitrileCarbon = (id: string) =>
+    graph.atoms.get(id)?.element === 'C' &&
+    graph.getNeighbors(id).some(n => n.order === 3 && graph.atoms.get(n.neighborId)?.element === 'N');
+  const carbonSet = new Set(
+    branchCarbons.filter(id => !graph.atoms.get(id)?.inRing && !isNitrileCarbon(id))
+  );
   const chain = longestBranchChain(graph, rootId, attachedTo, carbonSet);
   const chainSet = new Set(chain);
   const innerSubs: ClassifiedSubstituent[] = [];
@@ -1757,7 +2225,11 @@ function nameBranch(
     for (const n of graph.getNeighbors(cId)) {
       if (n.neighborId === attachedTo || chainSet.has(n.neighborId)) continue;
       const sub = nameBranch(graph, n.neighborId, cId, rings, depth + 1);
-      if (sub) innerSubs.push({ ...sub, locant: idx + 1 });
+      if (!sub) continue;
+      // A radical's own branches can also be doubly bonded to it; without this
+      // the "=CH2" of an isopropenyl group vanished from the name.
+      const asYlidene = toYlidene(graph, sub, n, idx + 1);
+      innerSubs.push(asYlidene ?? { ...sub, locant: idx + 1 });
     }
   });
 
@@ -1769,12 +2241,32 @@ function nameBranch(
     if (bond?.order === 3) yneLocants.push(i + 1);
   }
 
-  const stem = STEM_NAMES[chain.length] ?? 'alqu';
+  const stem = STEM_NAMES[chain.length];
+  if (!stem) {
+    // Same rule as the parent hydride: no invented stems ("alquil") for a
+    // radical longer than the table.
+    throw new UnnameableBranchError(
+      chain,
+      `Radical de ${chain.length} carbonos está fora da tabela de prefixos que eu conheço.`
+    );
+  }
   let core: string;
-  if (eneLocants.length > 0) {
-    core = `${stem}${chain.length > 2 ? `-${eneLocants.join(',')}-` : ''}${MULTIPLIERS[eneLocants.length] ?? ''}enil`;
-  } else if (yneLocants.length > 0) {
-    core = `${stem}${chain.length > 2 ? `-${yneLocants.join(',')}-` : ''}${MULTIPLIERS[yneLocants.length] ?? ''}inil`;
+  if (eneLocants.length > 0 || yneLocants.length > 0) {
+    // Both may be present; the old "else if" dropped the triple bond of a
+    // radical that had a double one, silently changing the molecule.
+    const withLocants = chain.length > 2;
+    let infix = '';
+    if (eneLocants.length > 0) {
+      if (eneLocants.length > 1) infix += 'a';
+      if (withLocants) infix += `-${eneLocants.join(',')}-`;
+      infix += `${MULTIPLIERS[eneLocants.length] ?? ''}en`;
+    }
+    if (yneLocants.length > 0) {
+      if (eneLocants.length === 0 && yneLocants.length > 1) infix += 'a';
+      if (withLocants) infix += `-${yneLocants.join(',')}-`;
+      infix += `${MULTIPLIERS[yneLocants.length] ?? ''}in`;
+    }
+    core = `${stem}${infix}il`;
   } else {
     core = `${ALKYL_NAMES[chain.length] ?? `${stem}il`}`;
   }
@@ -1784,6 +2276,41 @@ function nameBranch(
   const inner = innerPrefix ? joinWithNovoAcordo(innerPrefix, core) : core;
 
   return { locant: 0, name: `(${inner})`, sortKey: inner, isComplex: true };
+}
+
+
+/**
+ * Rewrites a substituent as an ylidene / ylidyne when it hangs off its parent by
+ * a double or triple bond.
+ *
+ * Emitting the plain "-il" name threw that bond away: "CCC=C(CCCC)CCCC" came out
+ * as 5-propilnonano, an alkane, because the bond joins the chain to a branch
+ * instead of running along it and nothing else in the pipeline looks at it.
+ * Returns null when the attachment is a single bond or the branch is not carbon.
+ */
+function toYlidene(
+  graph: MolecularGraph,
+  named: ClassifiedSubstituent,
+  edge: NeighborEdge,
+  locant: number
+): ClassifiedSubstituent | null {
+  if (edge.order < 2) return null;
+  if (graph.atoms.get(edge.neighborId)?.element !== 'C') return null;
+
+  const suffix = edge.order === 2 ? 'ideno' : 'idino';
+  // sortKey is the radical name without enclosing marks by construction;
+  // stripping brackets here mangled "(pirrol-2-il)metil" into an unbalanced
+  // "pirrol-2-il)metil".
+  const bare = named.sortKey;
+  const stem = bare.endsWith('il') ? bare : `${bare}il`;
+  const ylidene = `${stem}${suffix}`;
+  const needsBrackets = named.isComplex || /[\d-]/.test(ylidene) || stem !== named.sortKey;
+  return {
+    locant,
+    name: needsBrackets ? `(${ylidene})` : ylidene,
+    sortKey: ylidene,
+    isComplex: needsBrackets,
+  };
 }
 
 export function identifySubstituents(
@@ -1809,7 +2336,10 @@ export function identifySubstituents(
       if (!subAtom || subAtom.element === 'H') continue;
 
       const named = nameBranch(graph, subId, parentId, rings);
-      if (named) substituents.push({ ...named, locant });
+      if (!named) continue;
+
+      const asYlidene = toYlidene(graph, named, edge, locant);
+      substituents.push(asYlidene ?? { ...named, locant });
     }
   }
 
@@ -1827,20 +2357,6 @@ export function identifySubstituents(
 const MULTIPLIERS = ['', '', 'di', 'tri', 'tetra', 'penta', 'hexa', 'hepta', 'octa'];
 /** Multiplying prefixes used before composite (parenthesised) radical names. */
 const COMPLEX_MULTIPLIERS = ['', '', 'bis', 'tris', 'tetraquis', 'pentaquis', 'hexaquis'];
-const STEM_NAMES: Record<number, string> = {
-  1: 'met',
-  2: 'et',
-  3: 'prop',
-  4: 'but',
-  5: 'pent',
-  6: 'hex',
-  7: 'hept',
-  8: 'oct',
-  9: 'non',
-  10: 'dec',
-  11: 'undec',
-  12: 'dodec',
-};
 
 function formatGroupedSubstituents(
   subs: ClassifiedSubstituent[],
@@ -1848,23 +2364,29 @@ function formatGroupedSubstituents(
 ): string {
   if (subs.length === 0) return '';
 
-  const groups = new Map<string, { locants: number[]; sortKey: string; isComplex: boolean }>();
+  const groups = new Map<string, { locants: string[]; sortKey: string; isComplex: boolean }>();
   for (const s of subs) {
     if (!groups.has(s.name)) {
       groups.set(s.name, { locants: [], sortKey: s.sortKey, isComplex: s.isComplex });
     }
-    groups.get(s.name)!.locants.push(s.locant);
+    groups.get(s.name)!.locants.push(s.locantLabel ?? String(s.locant));
   }
 
-  // Alphanumerical ordering ignores multiplying prefixes (IUPAC P-14.5.2).
+  // Alphanumerical ordering ignores multiplying prefixes and italics (P-14.5.2).
   const sortedNames = Array.from(groups.keys()).sort((a, b) =>
-    groups.get(a)!.sortKey.localeCompare(groups.get(b)!.sortKey, 'pt-BR')
+    alphabetisationKey(groups.get(a)!.sortKey).localeCompare(
+      alphabetisationKey(groups.get(b)!.sortKey),
+      'pt-BR'
+    )
   );
+
+  // Italic locants are cited before numerals within a group: N,2-dimetil…
+  const locantRank = (l: string) => (/^\d+$/.test(l) ? Number(l) : -1);
 
   const parts: string[] = [];
   for (const name of sortedNames) {
     const grp = groups.get(name)!;
-    grp.locants.sort((a, b) => a - b);
+    grp.locants.sort((a, b) => locantRank(a) - locantRank(b));
     const count = grp.locants.length;
     const table = grp.isComplex ? COMPLEX_MULTIPLIERS : MULTIPLIERS;
     const mult = count > 1 ? table[count] ?? `${count}x-` : '';
@@ -2004,8 +2526,18 @@ function assembleParent(input: AssemblyInput): { name2013: string; name1993: str
   if (heterocycleName) core = heterocycleName;
   else if (parent.ringType === 'benzeno') core = 'benzen';
   else if (parent.ringType === 'naftaleno') core = 'naftalen';
-  else if (isRing) core = joinWithNovoAcordo('ciclo', STEM_NAMES[carbonCount] ?? 'carb');
-  else core = STEM_NAMES[carbonCount] ?? 'carb';
+  else if (isRing || parent.type === 'chain') {
+    const stem = STEM_NAMES[carbonCount];
+    if (!stem) {
+      // The old fallback spelled the non-word "carbano" for anything past the
+      // table. A missing name is honest; an invented one is not.
+      throw new UnnameableBranchError(
+        parent.atomIds,
+        `Esqueleto de ${carbonCount} átomos está fora da tabela de prefixos que eu conheço.`
+      );
+    }
+    core = isRing ? joinWithNovoAcordo('ciclo', stem) : stem;
+  } else core = STEM_NAMES[carbonCount] ?? '';
 
   const suffixCount = Math.max(1, suffixLocants.length);
   const suffixBase =
@@ -2034,6 +2566,14 @@ function assembleParent(input: AssemblyInput): { name2013: string; name1993: str
   if (heterocycleName && suffix && /[aeiou]$/.test(core) && /^[aeiou]/.test(suffixBase)) {
     // piperidina + ol -> piperidin-4-ol (never "piperidinaol")
     core = core.slice(0, -1);
+  }
+
+  // "piridin" + "o" + "diamina" produced "piridinodiamina"; the retained name
+  // keeps its own ending and takes the locants directly: piridina-2,5-diamina.
+  if (heterocycleName && suffixCount > 1) {
+    const body = `${heterocycleName}-${suffixLocants.join(',')}-${suffixMult}${suffixBase}`;
+    const full = joinWithNovoAcordo(prefixStr, body);
+    return { name2013: full, name1993: full };
   }
 
   let base2013 = core + buildInfix(writeUnsatLocants);
@@ -2257,7 +2797,63 @@ function assembleAnhydrideName(
     .join(' e ')}`;
 }
 
+/**
+ * Public entry point: builds the name, then stamps the E/Z descriptor on it.
+ *
+ * The stamping lives here, not in the analysis pipeline, because there are two
+ * callers — `analyzeMolecularGraph` and the older `GraphNamer` — and putting it
+ * in only one of them meant `nameMolecularGraph` still gave geranial and neral
+ * the same name.
+ */
 export function assembleIupacNames(
+  graph: MolecularGraph,
+  parent: ParentStructure,
+  numbering: Map<string, number>,
+  substituents: ClassifiedSubstituent[],
+  primaryFunction: OrganicFunction,
+  detectedFunctions: DetectedFunction[],
+  suffixOccurrences: DetectedFunction[] = [],
+  rings: Ring[] = []
+): { name2013: string; name1993: string } {
+  const built = assembleParentName(
+    graph,
+    parent,
+    numbering,
+    substituents,
+    primaryFunction,
+    detectedFunctions,
+    suffixOccurrences,
+    rings
+  );
+
+  const configurations = assignDoubleBondConfigurations(graph, parent, numbering);
+  if (configurations.length === 0) return built;
+
+  let eneCount = 0;
+  for (let i = 0; i < parent.atomIds.length - 1; i++) {
+    const b = graph.getBondBetween(parent.atomIds[i], parent.atomIds[i + 1]);
+    if (b?.order === 2 && !b.aromatic && !b.inRing) eneCount++;
+  }
+
+  // A lone double bond needs no locant in the descriptor; several do.
+  const descriptor =
+    eneCount > 1
+      ? configurations.map(c => `${c.locant}${c.descriptor}`).join(',')
+      : configurations[0].descriptor;
+
+  // Portuguese puts a class word first ("ácido", "cloreto de"); the descriptor
+  // goes after it, immediately before the parent name.
+  const stamp = (full: string): string => {
+    if (!full) return full;
+    const match = full.match(/^(ácido |anidrido |\w+ de )/);
+    const head = match ? match[1] : '';
+    return `${head}(${descriptor})-${full.slice(head.length)}`;
+  };
+
+  return { name2013: stamp(built.name2013), name1993: stamp(built.name1993) };
+}
+
+function assembleParentName(
   graph: MolecularGraph,
   parent: ParentStructure,
   numbering: Map<string, number>,
@@ -2277,8 +2873,23 @@ export function assembleIupacNames(
 
   // N-substituents of amines and amides are cited with the italic locant "N",
   // repeated once per occurrence: N,N-dimetil…, N-etil-N-metil…
-  const nRadicals: string[] = [];
+  // N-substituents are cited with the italic locant "N" — but *interleaved*
+  // with the carbon ones in a single alphabetical sequence. Emitting them as a
+  // separate block in front produced "N-metil-3-etil…" where IUPAC asks for
+  // "3-etil-N-metil…".
+  const nSubstituents: ClassifiedSubstituent[] = [];
   if (primaryFunction === 'amina' || primaryFunction === 'amida') {
+    // Two nitrogens need telling apart: N and N'. Labelling both "N" turned a
+    // di(methylamino) compound into one nitrogen carrying two methyls.
+    const nitrogenIds = [
+      ...new Set(
+        suffixOccurrences
+          .map(o => o.atomIds.find(id => graph.atoms.get(id)?.element === 'N'))
+          .filter((id): id is string => id !== undefined)
+      ),
+    ];
+    const primeFor = (nId: string) =>
+      nitrogenIds.length > 1 ? `N${"'".repeat(nitrogenIds.indexOf(nId))}` : 'N';
     for (const occ of suffixOccurrences) {
       const nId = occ.atomIds.find(id => graph.atoms.get(id)?.element === 'N');
       if (!nId) continue;
@@ -2288,38 +2899,35 @@ export function assembleIupacNames(
         if (!a || a.element !== 'C') continue;
         if (parent.atomIds.includes(n.neighborId)) continue;
         const named = nameBranch(graph, n.neighborId, nId, rings);
-        if (named) nRadicals.push(named.name);
+        if (named) nSubstituents.push({ ...named, locant: 0, locantLabel: primeFor(nId) });
       }
     }
   }
 
-  const nGroups = new Map<string, number>();
-  for (const r of nRadicals) nGroups.set(r, (nGroups.get(r) ?? 0) + 1);
-  const nPrefix = Array.from(nGroups.keys())
-    .sort((a, b) => a.localeCompare(b, 'pt-BR'))
-    .map(radical => {
-      const count = nGroups.get(radical)!;
-      const locants = Array<string>(count).fill('N').join(',');
-      const mult = count > 1 ? MULTIPLIERS[count] ?? '' : '';
-      return `${locants}-${mult}${radical}`;
-    })
-    .join('-');
-
   // A ring that carries an exocyclic principal group, or a fused ring, has a
   // fixed C1 — its substituent positions are meaningful and must be numbered.
+  // A heteroatom fixes the numbering, so no position of a heterocycle is
+  // interchangeable: 4-metilpiridina and 2-metilpiridina are different
+  // compounds. assembleParent already knew this; this function did not, and it
+  // is the one that decides the prefix, so the locant was being dropped.
+  const parentIsHeterocycle = isRing && ringHasHeteroatoms(graph, parent.atomIds);
   const ringPositionsInterchangeable =
     isRing &&
+    !parentIsHeterocycle &&
     !parent.exocyclicCarbonId &&
     parent.ringType !== 'naftaleno' &&
     (parent.fusionAtomIds?.length ?? 0) === 0;
+  const allSubstituents = [...substituents, ...nSubstituents];
   const omitPrefixLocants =
     carbonCount <= 1 ||
-    (substituents.length + suffixLocants.length <= 1 &&
+    (allSubstituents.length + suffixLocants.length <= 1 &&
       (ringPositionsInterchangeable || carbonCount <= 2));
 
-  const prefixStr = [nPrefix, formatGroupedSubstituents(substituents, omitPrefixLocants)]
-    .filter(Boolean)
-    .join('-');
+  // An italic "N" is never redundant, so it survives the omission rule.
+  const prefixStr = formatGroupedSubstituents(
+    allSubstituents,
+    omitPrefixLocants && nSubstituents.length === 0
+  );
 
   const base = (suffixFn: OrganicFunction | undefined, plain = false) =>
     assembleParent({
@@ -2327,7 +2935,7 @@ export function assembleIupacNames(
       parent,
       numbering,
       prefixStr,
-      substituentCount: substituents.length,
+      substituentCount: allSubstituents.length,
       suffix:
         suffixFn && FUNCTION_SUFFIX[suffixFn]
           ? {
@@ -2350,11 +2958,22 @@ export function assembleIupacNames(
       parent,
       numbering,
       prefixStr,
-      substituentCount: substituents.length,
+      substituentCount: allSubstituents.length,
     }).name2013;
 
     if (primaryFunction === 'acido_carboxilico' && parent.ringType === 'benzeno') {
-      const full = `ácido ${joinWithNovoAcordo(prefixStr, 'benzoico')}`;
+      const anionic = detectedFunctions
+        .filter(d => d.type === 'acido_carboxilico')
+        .every(d =>
+          d.atomIds.some(id => {
+            const a = graph.atoms.get(id);
+            return a?.element === 'O' && a.charge === -1;
+          })
+        );
+      const retained = anionic ? 'benzoato' : 'benzoico';
+      const full = anionic
+        ? joinWithNovoAcordo(prefixStr, retained)
+        : `ácido ${joinWithNovoAcordo(prefixStr, retained)}`;
       return { name2013: full, name1993: full };
     }
     if (primaryFunction === 'ester') {
@@ -2380,19 +2999,86 @@ export function assembleIupacNames(
       const halogen = acyl?.extra?.halogen ?? 'Cl';
       const halName =
         halogen === 'F' ? 'fluoreto' : halogen === 'Br' ? 'brometo' : halogen === 'I' ? 'iodeto' : 'cloreto';
+      const ringAttachment = graph
+        .getNeighbors(parent.exocyclicCarbonId)
+        .map(n => n.neighborId)
+        .find(id => parent.atomIds.includes(id));
+      const ringAttachmentLocant = ringAttachment ? numbering.get(ringAttachment) : undefined;
+      const carbonilaBody =
+        ringHasHeteroatoms(graph, parent.atomIds) && ringAttachmentLocant !== undefined
+          ? `${ringName}-${ringAttachmentLocant}-carbonila`
+          : `${ringName}carbonila`;
       const acylName =
         parent.ringType === 'benzeno'
           ? joinWithNovoAcordo(prefixStr, 'benzoíla')
-          : `${ringName}carbonila`;
+          : carbonilaBody;
       const full = `${halName} de ${acylName}`;
       return { name2013: full, name1993: full };
     }
     const carbo = RING_CARBO_SUFFIX[primaryFunction];
     if (carbo) {
-      const body = `${ringName}${carbo}`;
+      // On a heterocycle the heteroatom owns position 1, so the ring carbon
+      // bearing the group has a locant of its own and it must be written:
+      // "ácido piperidinacarboxílico" let a reader hang the acid on the
+      // nitrogen. A carbocycle keeps the bare form, its C1 being the
+      // attachment by definition.
+      const attachmentRingAtom = graph
+        .getNeighbors(parent.exocyclicCarbonId)
+        .map(n => n.neighborId)
+        .find(id => parent.atomIds.includes(id));
+      const attachmentLocant = attachmentRingAtom ? numbering.get(attachmentRingAtom) : undefined;
+      const needsLocant =
+        ringHasHeteroatoms(graph, parent.atomIds) && attachmentLocant !== undefined;
+      const body = needsLocant
+        ? `${ringName}-${attachmentLocant}-${carbo}`
+        : `${ringName}${carbo}`;
       const full = primaryFunction === 'acido_carboxilico' ? `ácido ${body}` : body;
       return { name2013: full, name1993: full };
     }
+  }
+
+  // Urea is a retained name (P-66.1.6.1.1). Built systematically it came out as
+  // "aminometanamida", which OPSIN reads as H2N-NH-CHO — a different molecule.
+  if (primaryFunction === 'amida' && parent.atomIds.length === 1) {
+    const carbon = graph.atoms.get(parent.atomIds[0]);
+    if (carbon) {
+      const neighbours = graph.getNeighbors(carbon.id);
+      const nitrogens = neighbours.filter(
+        n => n.order === 1 && graph.atoms.get(n.neighborId)?.element === 'N'
+      );
+      const carbonylO = neighbours.find(
+        n => n.order === 2 && graph.atoms.get(n.neighborId)?.element === 'O'
+      );
+      const bareNitrogens = nitrogens.filter(
+        n =>
+          !graph
+            .getNeighbors(n.neighborId)
+            .some(x => x.neighborId !== carbon.id && graph.atoms.get(x.neighborId)?.element === 'C')
+      );
+      if (carbonylO && nitrogens.length === 2 && bareNitrogens.length === 2) {
+        return { name2013: 'ureia', name1993: 'ureia' };
+      }
+    }
+  }
+
+  // Carboxylate anion: the deprotonated form is "benzoato" / "…oato", never
+  // "ácido benzoico" — calling an anion an acid states the wrong species.
+  const isCarboxylate =
+    primaryFunction === 'acido_carboxilico' &&
+    suffixOccurrences.length > 0 &&
+    suffixOccurrences.every(occ =>
+      occ.atomIds.some(id => {
+        const a = graph.atoms.get(id);
+        return a?.element === 'O' && a.charge === -1;
+      })
+    );
+  if (isCarboxylate) {
+    if (isRing && parent.exocyclicCarbonId && parent.ringType === 'benzeno') {
+      const full = joinWithNovoAcordo(prefixStr, 'benzoato');
+      return { name2013: full, name1993: full };
+    }
+    const { name2013, name1993 } = base('ester');
+    return { name2013, name1993 };
   }
 
   // Carboxylic acid: "ácido …oico"
@@ -2482,6 +3168,198 @@ export function assembleIupacNames(
 
   // Hydrocarbons, ethers, alkyl halides and nitro compounds: plain parent hydride.
   return base(undefined, true);
+}
+
+// ============================================================================
+// 8b. Double-bond configuration (E/Z)
+// ============================================================================
+
+const ATOMIC_NUMBERS: Record<string, number> = {
+  H: 1, C: 6, N: 7, O: 8, F: 9, P: 15, S: 16, Cl: 17, Br: 35, I: 53,
+};
+
+/**
+ * CIP exploration of one branch, as a list of spheres of atomic numbers sorted
+ * descending. Multiple bonds contribute duplicate atoms, as the rules require.
+ *
+ * This is the classic hierarchical-digraph comparison truncated at a fixed
+ * depth: enough to separate every substituent pair a secondary-school molecule
+ * presents, and it degrades to "cannot decide" rather than guessing.
+ */
+function cipSpheres(
+  graph: MolecularGraph,
+  root: string,
+  cameFrom: string,
+  maxDepth = 6
+): number[][] {
+  const HYDROGEN = '\u0000H';
+  const spheres: number[][] = [];
+  let frontier: { id: string; from: string }[] = [{ id: root, from: cameFrom }];
+
+  for (let depth = 0; depth < maxDepth && frontier.length > 0; depth++) {
+    const numbers: number[] = [];
+    const next: { id: string; from: string }[] = [];
+
+    for (const node of frontier) {
+      if (node.id === HYDROGEN) {
+        numbers.push(1);
+        continue;
+      }
+      const atom = graph.atoms.get(node.id);
+      if (!atom) continue;
+      numbers.push(ATOMIC_NUMBERS[atom.element] ?? 0);
+
+      for (const edge of graph.getNeighbors(node.id)) {
+        if (edge.neighborId === node.from) continue;
+        next.push({ id: edge.neighborId, from: node.id });
+        // A double bond duplicates its partner, a triple bond triplicates it.
+        for (let k = 1; k < edge.order; k++) {
+          next.push({ id: edge.neighborId, from: node.id });
+        }
+      }
+      // Hydrogens are branches of this atom, so they belong to the NEXT sphere.
+      // Counting them in the current one made a methyl (C + 3H in sphere 0)
+      // outrank a chain (C + 2H), inverting the descriptor of geranial.
+      for (let k = 0; k < atom.implicitH; k++) {
+        next.push({ id: HYDROGEN, from: node.id });
+      }
+    }
+
+    numbers.sort((a, b) => b - a);
+    spheres.push(numbers);
+    frontier = next;
+  }
+
+  return spheres;
+}
+
+/** > 0 when branch `a` outranks branch `b`; 0 when they are indistinguishable. */
+function compareCipBranches(
+  graph: MolecularGraph,
+  a: string,
+  b: string,
+  from: string
+): number {
+  const sa = cipSpheres(graph, a, from);
+  const sb = cipSpheres(graph, b, from);
+  for (let depth = 0; depth < Math.max(sa.length, sb.length); depth++) {
+    const la = sa[depth] ?? [];
+    const lb = sb[depth] ?? [];
+    for (let i = 0; i < Math.max(la.length, lb.length); i++) {
+      const va = la[i] ?? 0;
+      const vb = lb[i] ?? 0;
+      if (va !== vb) return va - vb;
+    }
+  }
+  return 0;
+}
+
+export interface DoubleBondConfiguration {
+  locant: number;
+  descriptor: 'E' | 'Z';
+}
+
+/**
+ * Assigns E/Z to the parent's double bonds, reading the "/" and "\" markers.
+ *
+ * Without this, geranial and neral — different molecules, different smells —
+ * received the same name, and so did fumaric and maleic acid. A bond whose
+ * configuration the notation does not state is left undescribed rather than
+ * guessed.
+ */
+export function assignDoubleBondConfigurations(
+  graph: MolecularGraph,
+  parent: ParentStructure,
+  numbering: Map<string, number>
+): DoubleBondConfiguration[] {
+  if (parent.type !== 'chain') return [];
+  const result: DoubleBondConfiguration[] = [];
+
+  for (let i = 0; i < parent.atomIds.length - 1; i++) {
+    const c1 = parent.atomIds[i];
+    const c2 = parent.atomIds[i + 1];
+    const bond = graph.getBondBetween(c1, c2);
+    if (!bond || bond.order !== 2 || bond.aromatic || bond.inRing) continue;
+
+    /** Which side a substituent sits on, from the notation's markers. */
+    const sideOf = (carbon: string, other: string): Map<string, 'up' | 'down'> => {
+      const sides = new Map<string, 'up' | 'down'>();
+      for (const edge of graph.getNeighbors(carbon)) {
+        if (edge.neighborId === other) continue;
+        const b = graph.bonds.get(edge.bondId);
+        if (!b?.direction) continue;
+        // A marker is written relative to the bond's own source→target order;
+        // normalise it to "leaving the double-bond carbon".
+        const leavingCarbon = b.source === carbon;
+        const normalised: 'up' | 'down' = leavingCarbon
+          ? b.direction
+          : b.direction === 'up'
+          ? 'down'
+          : 'up';
+        sides.set(edge.neighborId, normalised);
+      }
+      return sides;
+    };
+
+    const sides1 = sideOf(c1, c2);
+    const sides2 = sideOf(c2, c1);
+    if (sides1.size === 0 || sides2.size === 0) continue;
+
+    const branches = (carbon: string, other: string) =>
+      graph
+        .getNeighbors(carbon)
+        .filter(n => n.neighborId !== other && graph.atoms.get(n.neighborId)?.element !== 'H')
+        .map(n => n.neighborId);
+
+    const b1 = branches(c1, c2);
+    const b2 = branches(c2, c1);
+    if (b1.length === 0 || b2.length === 0) continue;
+
+    // Senior branch on each carbon. With a single heavy substituent the implicit
+    // hydrogen is automatically the junior one.
+    const senior = (list: string[], carbon: string): string | null => {
+      let best = list[0];
+      for (const candidate of list.slice(1)) {
+        const cmp = compareCipBranches(graph, candidate, best, carbon);
+        if (cmp === 0) return null; // indistinguishable: no descriptor is defined
+        if (cmp > 0) best = candidate;
+      }
+      return best;
+    };
+
+    const s1 = senior(b1, c1);
+    const s2 = senior(b2, c2);
+    if (!s1 || !s2) continue;
+
+    const side1 = sides1.get(s1) ?? flipSide(sides1, b1, s1);
+    const side2 = sides2.get(s2) ?? flipSide(sides2, b2, s2);
+    if (!side1 || !side2) continue;
+
+    // Equal normalised markers put the two branches on the same side: that is
+    // why "F/C=C/F" is the trans isomer.
+    const sameSide = side1 === side2;
+    const locant = Math.min(numbering.get(c1) ?? 1, numbering.get(c2) ?? 1);
+    result.push({ locant, descriptor: sameSide ? 'Z' : 'E' });
+  }
+
+  return result.sort((a, b) => a.locant - b.locant);
+}
+
+/**
+ * The marker may sit on the *other* substituent of the same carbon; the senior
+ * branch is then on the opposite side of it.
+ */
+function flipSide(
+  sides: Map<string, 'up' | 'down'>,
+  branches: string[],
+  target: string
+): 'up' | 'down' | null {
+  for (const [id, side] of sides) {
+    if (id !== target && branches.includes(id)) {
+      return side === 'up' ? 'down' : 'up';
+    }
+  }
+  return null;
 }
 
 // ============================================================================
@@ -2630,6 +3508,7 @@ export function createGraphFromSMILES(smiles: string): MolecularGraph {
   const stack: (string | null)[] = [];
   let currentAtomId: string | null = null;
   let pendingBondOrder: BondOrder = 1;
+  let pendingBondDirection: 'up' | 'down' | undefined;
   const ringOpenings = new Map<number, { atomId: string; bondOrder: BondOrder }>();
 
   let i = 0;
@@ -2661,10 +3540,22 @@ export function createGraphFromSMILES(smiles: string): MolecularGraph {
       i++;
       continue;
     }
+    // Configuration markers around a double bond. These are *bond* tokens, not
+    // atoms: falling through to the element branch turned every one of them
+    // into a carbon, so cinnamaldehyde (C9H8O) parsed as C11H12O and was named
+    // "5-fenilpent-3-enal".
+    if (ch === '/' || ch === '\\') {
+      pendingBondDirection = ch === '/' ? 'up' : 'down';
+      i++;
+      continue;
+    }
 
     // Ring closure digit
     if (ch >= '1' && ch <= '9') {
       const rNum = parseInt(ch, 10);
+      if (currentAtomId === null) {
+        throw new Error(`SMILES inválido: dígito de anel "${ch}" antes de qualquer átomo.`);
+      }
       if (ringOpenings.has(rNum)) {
         const opening = ringOpenings.get(rNum)!;
         ringOpenings.delete(rNum);
@@ -2685,23 +3576,47 @@ export function createGraphFromSMILES(smiles: string): MolecularGraph {
       continue;
     }
 
-    // Bracketed atom: [N+], [O-], etc.
+    // Bracketed atom: [N+], [O-], [nH], [CH3], [13C], ...
     if (ch === '[') {
       const closeIdx = smiles.indexOf(']', i);
+      if (closeIdx === -1) {
+        throw new Error(`SMILES inválido: "[" sem "]" em ${i}.`);
+      }
       const inner = smiles.substring(i + 1, closeIdx);
-      let element: AtomElement = 'C';
-      let charge = 0;
+
+      // Read the element symbol off the *front* of the bracket, past any isotope
+      // digits. Scanning for a letter anywhere inside instead made "[nH]" parse
+      // as carbon (no upper-case N, no lower-case c) — pyrrole came out as
+      // cyclopentane, with the nitrogen silently gone.
+      const symbolMatch = inner.match(/^\d*([A-Za-z][a-z]?)/);
+      if (!symbolMatch) {
+        throw new Error(`SMILES inválido: átomo "[${inner}]" sem símbolo de elemento.`);
+      }
+      let symbol = symbolMatch[1];
       let aromatic = false;
+      // Two-letter reads are only real for Cl and Br; "nH" is an aromatic n
+      // followed by its hydrogen count, and "CH" is a C followed by hers.
+      if (symbol.length === 2 && symbol !== 'Cl' && symbol !== 'Br') {
+        symbol = symbol[0];
+      }
+      if (/^[cnosp]$/.test(symbol)) {
+        aromatic = true;
+        symbol = symbol.toUpperCase();
+      }
+      if (!['C', 'N', 'O', 'F', 'Cl', 'Br', 'I', 'S', 'P', 'H'].includes(symbol)) {
+        throw new Error(`SMILES inválido: elemento "${symbol}" não suportado.`);
+      }
+      const element = symbol as AtomElement;
 
-      if (inner.includes('N')) element = 'N';
-      else if (inner.includes('O')) element = 'O';
-      else if (inner.includes('C')) element = 'C';
-      else if (inner.includes('c')) { element = 'C'; aromatic = true; }
+      const rest = inner.slice(symbolMatch[0].length);
+      const hMatch = rest.match(/H(\d*)/);
+      const explicitHCount = hMatch ? (hMatch[1] === '' ? 1 : Number(hMatch[1])) : 0;
 
-      if (inner.includes('+')) {
-        charge = inner.includes('+2') ? 2 : 1;
-      } else if (inner.includes('-')) {
-        charge = inner.includes('-2') ? -2 : -1;
+      let charge = 0;
+      const chargeMatch = rest.match(/([+-])(\d*)/);
+      if (chargeMatch) {
+        const magnitude = chargeMatch[2] === '' ? 1 : Number(chargeMatch[2]);
+        charge = chargeMatch[1] === '+' ? magnitude : -magnitude;
       }
 
       const id = `a${atomIndex++}`;
@@ -2712,6 +3627,7 @@ export function createGraphFromSMILES(smiles: string): MolecularGraph {
         y: 0,
         charge,
         implicitH: 0,
+        explicitHCount,
         aromatic,
       });
 
@@ -2722,8 +3638,10 @@ export function createGraphFromSMILES(smiles: string): MolecularGraph {
           target: id,
           order: pendingBondOrder,
           style: 'solid',
+          direction: pendingBondDirection,
         });
         pendingBondOrder = 1;
+        pendingBondDirection = undefined;
       }
       currentAtomId = id;
       i = closeIdx + 1;
@@ -2742,6 +3660,13 @@ export function createGraphFromSMILES(smiles: string): MolecularGraph {
 
     let element: AtomElement = 'C';
     let aromatic = false;
+
+    // Anything the organic subset does not cover is a parse error. Defaulting
+    // to carbon is what let the stereo markers become phantom atoms, and it
+    // would hide every future notation gap the same way.
+    if (!/^(c|n|o|s|p|C|N|O|F|Cl|Br|I|S|P|H)$/.test(elStr)) {
+      throw new Error(`SMILES inválido: token "${elStr}" não reconhecido na posição ${i}.`);
+    }
 
     if (elStr === 'c') { element = 'C'; aromatic = true; }
     else if (elStr === 'n') { element = 'N'; aromatic = true; }
@@ -2770,12 +3695,24 @@ export function createGraphFromSMILES(smiles: string): MolecularGraph {
         target: id,
         order: pendingBondOrder,
         style: 'solid',
+        direction: pendingBondDirection,
       });
       pendingBondOrder = 1;
+      pendingBondDirection = undefined;
     }
 
     currentAtomId = id;
     i++;
+  }
+
+  if (ringOpenings.size > 0) {
+    // An unmatched digit means the ring never closed. Naming the fragment anyway
+    // produced confident nonsense from corrupt input, so it is an error now.
+    const open = [...ringOpenings.keys()].sort().join(', ');
+    throw new Error(`SMILES inválido: dígito(s) de anel sem fechamento: ${open}.`);
+  }
+  if (stack.length > 0) {
+    throw new Error('SMILES inválido: parênteses não fechados.');
   }
 
   calculateValences(graph);
@@ -2887,7 +3824,20 @@ export function validateMolecularGraph(graph: MolecularGraph): GraphProblem[] {
   const overloaded: string[] = [];
   for (const atom of atoms) {
     const sum = graph.getNeighbors(atom.id).reduce((acc, n) => acc + n.order, 0);
-    const limit = (maxValence[atom.element] ?? 4) + Math.abs(atom.charge);
+    // Only a *positive* charge buys extra bonds. Using |charge| let [O-] reach
+    // three bonds and [N+] five, so genuinely impossible drawings passed.
+    let limit = (maxValence[atom.element] ?? 4) + Math.max(0, atom.charge);
+
+    // "N(=O)=O" is the everyday SMILES shorthand for a nitro group and appears
+    // all over public datasets. It is formally pentavalent nitrogen, so accept
+    // it explicitly rather than rejecting half the corpus we want to grow into.
+    if (atom.element === 'N' && atom.charge === 0 && sum === 5) {
+      const doubleOxygens = graph
+        .getNeighbors(atom.id)
+        .filter(n => n.order === 2 && graph.atoms.get(n.neighborId)?.element === 'O');
+      if (doubleOxygens.length === 2) limit = 5;
+    }
+
     if (sum > limit) overloaded.push(atom.id);
   }
   if (overloaded.length > 0) {
@@ -2953,25 +3903,39 @@ export class GraphNamer {
       consumedAtoms.add(parentStructure.exocyclicCarbonId);
     }
 
-    const substituents = identifySubstituents(
-      this.graph,
-      parentStructure,
-      numbering,
-      primaryFunction,
-      consumedAtoms,
-      rings
-    );
+    // A branch may hold a ring with no name (fused, bridged, off-table). This
+    // path has no channel to report problems through — analyzeMolecularGraph is
+    // the one that refuses out loud — so it degrades to a best effort here.
+    let substituents: ClassifiedSubstituent[] = [];
+    try {
+      substituents = identifySubstituents(
+        this.graph,
+        parentStructure,
+        numbering,
+        primaryFunction,
+        consumedAtoms,
+        rings
+      );
+    } catch (err) {
+      if (!(err instanceof UnnameableBranchError)) throw err;
+    }
 
-    const { name2013, name1993 } = assembleIupacNames(
-      this.graph,
-      parentStructure,
-      numbering,
-      substituents,
-      primaryFunction,
-      detected,
-      suffixOccurrences,
-      rings
-    );
+    let name2013 = '';
+    let name1993 = '';
+    try {
+      ({ name2013, name1993 } = assembleIupacNames(
+        this.graph,
+        parentStructure,
+        numbering,
+        substituents,
+        primaryFunction,
+        detected,
+        suffixOccurrences,
+        rings
+      ));
+    } catch (err) {
+      if (!(err instanceof UnnameableBranchError)) throw err;
+    }
 
     const smiles = molecularGraphToSMILES(this.graph);
 
@@ -3040,6 +4004,68 @@ export function analyzeMolecularGraph(
     const parent = selectParentStructure(graph, primaryFunction, rings, detected);
     const numbering = numberParentStructure(graph, parent, primaryFunction, detected);
 
+    // Polycyclic systems the engine has no vocabulary for. Naphthalene is the
+    // one fused parent it can name; bridged bicyclics, spiro centres,
+    // anthracene and indole used to be pulled apart into independent SSSR rings
+    // and named as if each were isolated, so bicyclo[2.2.2]octane (C8H14) came
+    // out as "1,4-diciclo-hexilciclo-hexano". Refusing is the house rule.
+    //
+    // Scoped to the *parent* on purpose: a fused system can still be named when
+    // some other construction owns it, as the anhydride assembler does for
+    // phthalic anhydride.
+    if (parent.type === 'ring' && parent.ringType !== 'naftaleno') {
+      const parentRingSet = new Set(parent.atomIds);
+      const fusedWith = rings.find(
+        r =>
+          !r.atomIds.every(id => parentRingSet.has(id)) &&
+          r.atomIds.some(id => parentRingSet.has(id))
+      );
+      // A cyclic anhydride is named from its two acyl halves, so the fused ring
+      // it lives on is fine — as long as the ring carries nothing else, which
+      // that assembler would not know how to cite.
+      const anhydrideAtoms = new Set(
+        detected.filter(d => d.type === 'anidrido').flatMap(d => d.atomIds)
+      );
+      const fusedSystem = new Set([...parent.atomIds, ...(fusedWith?.atomIds ?? [])]);
+      const ringIsBare =
+        primaryFunction === 'anidrido' &&
+        [...fusedSystem].every(id =>
+          graph
+            .getNeighbors(id)
+            .every(
+              n =>
+                fusedSystem.has(n.neighborId) ||
+                anhydrideAtoms.has(n.neighborId) ||
+                graph.atoms.get(n.neighborId)?.element === 'H'
+            )
+        );
+      if (fusedWith && !ringIsBare) {
+        problems.push({
+          code: 'unsupported_ring',
+          message:
+            'Sistema de anéis fundidos ou em ponte fora do que eu sei nomear (só naftaleno). Prefiro não dar um nome do que dar um errado.',
+          atomIds: fusedWith.atomIds.filter(id => parentRingSet.has(id)),
+        });
+      }
+    }
+
+    // A chain or ring bigger than the stem table has no name either.
+    if (parent.type === 'chain' && parent.atomIds.length > 0 && !STEM_NAMES[parent.atomIds.length]) {
+      problems.push({
+        code: 'unsupported_ring',
+        message: `Cadeia de ${parent.atomIds.length} carbonos está fora da tabela de prefixos que eu conheço.`,
+        atomIds: parent.atomIds,
+      });
+    }
+
+    if (parent.type === 'ring' && !STEM_NAMES[parent.atomIds.length]) {
+      problems.push({
+        code: 'unsupported_ring',
+        message: `Anel de ${parent.atomIds.length} átomos está fora da tabela de prefixos que eu conheço.`,
+        atomIds: parent.atomIds,
+      });
+    }
+
     if (parent.type === 'ring' && ringHasHeteroatoms(graph, parent.atomIds)) {
       const ringAromatic = parent.atomIds.every(id => graph.atoms.get(id)?.aromatic === true);
       if (!identifyHeterocycle(graph, parent.atomIds, ringAromatic)) {
@@ -3065,25 +4091,53 @@ export function analyzeMolecularGraph(
     }
     if (parent.exocyclicCarbonId) consumedAtoms.add(parent.exocyclicCarbonId);
 
-    const substituents = identifySubstituents(
-      graph,
-      parent,
-      numbering,
-      primaryFunction,
-      consumedAtoms,
-      rings
-    );
+    let substituents: ClassifiedSubstituent[];
+    try {
+      substituents = identifySubstituents(
+        graph,
+        parent,
+        numbering,
+        primaryFunction,
+        consumedAtoms,
+        rings
+      );
+    } catch (err) {
+      // A branch holding a ring we cannot name. Refuse instead of returning a
+      // name that quietly leaves that ring out.
+      if (err instanceof UnnameableBranchError) {
+        // The anhydride assembler builds its name from the two acyl halves and
+        // never consults this list, so a fused ring it *can* handle (phthalic)
+        // must not be turned into a refusal here.
+        if (primaryFunction !== 'anidrido') {
+          problems.push({ code: 'unsupported_ring', message: err.message, atomIds: err.atomIds });
+        }
+        substituents = [];
+      } else {
+        throw err;
+      }
+    }
 
-    const { name2013, name1993 } = assembleIupacNames(
-      graph,
-      parent,
-      numbering,
-      substituents,
-      primaryFunction,
-      detected,
-      suffixOccurrences,
-      rings
-    );
+    let name2013: string;
+    let name1993: string;
+    try {
+      ({ name2013, name1993 } = assembleIupacNames(
+        graph,
+        parent,
+        numbering,
+        substituents,
+        primaryFunction,
+        detected,
+        suffixOccurrences,
+        rings
+      ));
+    } catch (err) {
+      if (err instanceof UnnameableBranchError) {
+        problems.push({ code: 'unsupported_ring', message: err.message, atomIds: err.atomIds });
+        ({ name2013, name1993 } = { name2013: '', name1993: '' });
+      } else {
+        throw err;
+      }
+    }
 
     const locants: Record<string, number> = {};
     numbering.forEach((value, key) => {

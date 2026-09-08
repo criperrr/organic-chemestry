@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { createGraphFromSMILES, nameMolecularGraph } from '../src/graph-namer.js';
+import {
+  analyzeMolecularGraph,
+  createGraphFromSMILES,
+  nameMolecularGraph,
+} from '../src/graph-namer.js';
 import { translateIupacToEnglish } from '../src/ptbr-to-english.js';
 
 const name = (smiles: string) => nameMolecularGraph(createGraphFromSMILES(smiles)).iupacName2013;
@@ -30,7 +34,13 @@ describe('Regressions found by the round-trip audit', () => {
 
   it('never calls a heteroatom-bearing ring substituent a cycloalkyl', () => {
     // Nicotine's N-methylpyrrolidine has a nitrogen: it is not "ciclopentil".
-    expect(name('CN1CCCC1c2cccnc2')).toContain('pirrolidinil');
+    // The radical also states where it attaches and keeps its own N-methyl —
+    // "pirrolidinil" alone let a reader attach through the nitrogen instead.
+    expect(name('CN1CCCC1c2cccnc2')).toBe('3-(1-metilpirrolidin-2-il)piridina');
+    // An aromatic heterocycle is not benzene: this used to be "feniletanamida".
+    expect(name('c1ccsc1CC(=O)N')).toBe('2-(tiofen-2-il)etanamida');
+    // A heterocyclic parent has a fixed numbering, so its locant is never optional.
+    expect(name('Cc1ccncc1')).toBe('4-metilpiridina');
   });
 
   it('writes substituent locants when a ring carries an exocyclic group', () => {
@@ -51,7 +61,7 @@ describe('Regressions found by the round-trip audit', () => {
 
   it('only contracts alkoxy names for the short unbranched alkyls', () => {
     // benzil + oxi is "benziloxi"; contracting it to "benzoxi" invented a group.
-    expect(name('c1ccc2OCOc2c1')).toBe('1,2-dibenziloxibenzeno');
+    expect(name('c1ccccc1COCC')).toBe('(etoximetil)benzeno');
     expect(name('COCC')).toBe('metoxietano');
   });
 });
@@ -117,5 +127,135 @@ describe('pt-BR to English bridge', () => {
   it('returns null rather than guessing at an unknown construction', () => {
     expect(translateIupacToEnglish('composto misterioso xyz')).toBeNull();
     expect(translateIupacToEnglish('')).toBeNull();
+  });
+});
+
+/**
+ * Second wave, found by the brute-force audit (`tools/bruteforce.audit.ts`),
+ * which generates molecules instead of reading the curated acervo. Every case
+ * below was a name the engine produced confidently and wrongly on a shape
+ * nobody had curated.
+ */
+describe('Regressions found by the brute-force audit', () => {
+  const analyse = (smiles: string) => analyzeMolecularGraph(createGraphFromSMILES(smiles));
+
+  it('reads bracketed atoms by their element, not by scanning for a letter', () => {
+    // "[nH]" held no upper-case N and no lower-case c, so pyrrole parsed as
+    // five carbons: C5H6, named "ciclopentano".
+    expect(name('c1cc[nH]c1')).toBe('pirrol');
+    expect(analyse('c1cc[nH]c1').formula).toBe('C4H5N');
+  });
+
+  it('perceives aromaticity in Kekulé notation and at any ring size', () => {
+    expect(name('C1=CC=NC=C1')).toBe('piridina');
+    expect(name('C1=CC=CC2=CC=CC=C12')).toBe('naftaleno');
+    // Five-membered aromatics were flagged non-aromatic, so the heterocycle
+    // table answered with the saturated entry: thiophene as "tiolano".
+    expect(name('c1ccsc1')).toBe('tiofeno');
+  });
+
+  it('does not mistake a saturated or bridged bicycle for naphthalene', () => {
+    // Decalin shares an edge between two six-rings, like naphthalene, but is
+    // not aromatic; bicyclo[2.2.2]octane shares two non-adjacent atoms.
+    expect(analyse('C1CCC2CCCCC2C1').isNameable).toBe(false);
+    expect(analyse('C1CC2CCC1CC2').isNameable).toBe(false);
+  });
+
+  it('refuses instead of inventing a stem past the table', () => {
+    expect(name('CCCCCCCCCCCCCCCC(=O)O')).toBe('ácido hexadecanoico');
+    // Beyond the table the old fallback produced the non-word "carbano".
+    const huge = analyse(`C${'C'.repeat(40)}`);
+    expect(huge.isNameable).toBe(false);
+    expect(huge.iupacName2013).not.toContain('carb');
+  });
+
+  it('keeps a ring substituent whole: identity, attachment and its own groups', () => {
+    // Every aromatic branch used to answer "fenil".
+    expect(name('CC(O)Cc1ccncc1')).toBe('1-(piridin-4-il)propan-2-ol');
+    // A ring cited as a substituent used to drop everything else on it.
+    expect(name('c1c(C(C)C)c(CC(C)C)ccc1')).toBe('1-(2-isopropilfenil)-2-metilpropano');
+    // And a branch reaching into a ring was walked as an open chain: "heptil".
+    expect(name('C1CCCCC1CC(CC)CC(=O)O')).toBe('ácido 3-(ciclo-hexilmetil)pentanoico');
+  });
+
+  it('never drops a bond that joins the parent to a branch', () => {
+    // The chain-to-branch double bond is an ylidene; ignoring it turned an
+    // alkene into an alkane.
+    expect(name('CCC=C(CCCC)CCCC')).toBe('5-propilidenononano');
+    expect(name('C=C1CCCCC1')).toBe('metilidenociclo-hexano');
+  });
+
+  it('cites substituents in alphanumerical order, italics and all', () => {
+    // "terc-" files under B, and N-substituents interleave with the carbon
+    // ones instead of being emitted as a block in front.
+    expect(name('CCC(C)CNC')).toBe('N,2-dimetilbutan-1-amina');
+    expect(name('CC(C)(C)C1CCC(C)CC1')).toBe('1-terc-butil-4-metilciclo-hexano');
+  });
+
+  it('names an unbranched alkyl only when it attaches at its own terminus', () => {
+    // A five-carbon branch joined at its middle carbon was also "pentil".
+    expect(name('CCC(c1ccccc1)CC')).toBe('(1-etilpropil)benzeno');
+  });
+
+  it('keeps a nitrile out of the parent chain when it is cited as a prefix', () => {
+    // The chain ran through the C≡N and the nitrogen came out as "amino".
+    expect(name('N#CCCC(=O)N')).toContain('ciano');
+    expect(name('N#CCCC(=O)N')).not.toContain('amino');
+  });
+
+  it('uses the retained names for urea and the lactams', () => {
+    // "aminometanamida" is read by OPSIN as H2N-NH-CHO, a different molecule.
+    expect(name('NC(=O)N')).toBe('ureia');
+    expect(name('O=C1CCCN1')).toBe('pirrolidin-2-ona');
+  });
+
+  it('rejects malformed SMILES instead of naming the wreckage', () => {
+    expect(() => createGraphFromSMILES('c1c(CC)')).toThrow();
+    expect(() => createGraphFromSMILES('CC(C')).toThrow();
+  });
+});
+
+/**
+ * Third wave, found by probing the engine with real, named molecules instead of
+ * generated ones. The round-trip audit is blind to all of these: the parser sits
+ * on both ends of that cycle, so a molecule it corrupts on the way in is
+ * re-corrupted identically on the way out and the comparison still matches.
+ */
+describe('Regressions found by probing real molecules', () => {
+  const analyse = (smiles: string) => analyzeMolecularGraph(createGraphFromSMILES(smiles));
+
+  it('reads "/" and "\\\\" as bond markers, not as carbon atoms', () => {
+    // Cinnamaldehyde is C9H8O. Parsed as atoms, the two markers made it C11H12O
+    // and it was named "5-fenilpent-3-enal".
+    expect(analyse('O=C/C=C/c1ccccc1').formula).toBe('C9H8O');
+    expect(analyse('OC(=O)/C=C/C(=O)O').formula).toBe('C4H4O4');
+  });
+
+  it('assigns E/Z so that two different molecules cannot share one name', () => {
+    // Geranial and neral differ only in configuration; both answered to
+    // "3,7-dimetilocta-2,6-dienal".
+    expect(name('CC(C)=CCC/C(=C/C=O)/C')).toBe('(2E)-3,7-dimetilocta-2,6-dienal');
+    expect(name('CC(C)=CCC/C(=C\\C=O)/C')).toBe('(2Z)-3,7-dimetilocta-2,6-dienal');
+    expect(name('OC(=O)/C=C/C(=O)O')).toBe('ácido (E)-but-2-enodioico');
+    expect(name('OC(=O)/C=C\\C(=O)O')).toBe('ácido (Z)-but-2-enodioico');
+    expect(name('CCCCCCCC/C=C\\CCCCCCCC(=O)O')).toBe('ácido (Z)-octadec-9-enoico');
+    // CIP ranking: a chain outranks a methyl, and hydrogens belong to the next
+    // sphere — counting them in the current one inverted geranial.
+    expect(name('C/C=C/C')).toBe('(E)-but-2-eno');
+    expect(name('F/C=C\\F')).toBe('(Z)-1,2-difluoreteno');
+    // A double bond whose configuration the drawing does not state stays
+    // undescribed rather than guessed.
+    expect(name('CC=CC')).toBe('but-2-eno');
+  });
+
+  it('names an acyloxy group as such', () => {
+    // Aspirin's acetyl was "1-oxoetoxi": structurally right, but no exam
+    // accepts it, and the acervo's own gabarito says otherwise.
+    expect(name('CC(=O)Oc1ccccc1C(=O)O')).toBe('ácido 2-acetoxibenzoico');
+  });
+
+  it('does not call a carboxylate anion an acid', () => {
+    expect(name('c1ccccc1C(=O)[O-]')).toBe('benzoato');
+    expect(name('CC(=O)[O-]')).toBe('etanoato');
   });
 });

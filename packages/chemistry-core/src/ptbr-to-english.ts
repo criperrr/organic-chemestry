@@ -52,11 +52,17 @@ const MORPHEMES: Record<string, string> = {
   imidazol: 'imidazole',
   pirazol: 'pyrazole',
   tiofeno: 'thiophene',
+  tiofen: 'thiophen',
   furano: 'furan',
-  pirrol: 'pyrrole',
+  furan: 'furan',
+  pirrol: 'pyrrol',
+  tiolan: 'thiolan',
+  tian: 'thian',
   oxano: 'oxane',
   oxan: 'oxan',
   tiano: 'thiane',
+
+  ureia: 'urea',
 
   // --- Aromatic and ring parents ------------------------------------------
   naftaleno: 'naphthalene',
@@ -83,6 +89,10 @@ const MORPHEMES: Record<string, string> = {
   isobutil: 'isobutyl',
   neopentil: 'neopentyl',
   carbamoil: 'carbamoyl',
+  clorocarbonil: 'chlorocarbonyl',
+  fluorcarbonil: 'fluorocarbonyl',
+  bromocarbonil: 'bromocarbonyl',
+  iodocarbonil: 'iodocarbonyl',
   formil: 'formyl',
   carboxi: 'carboxy',
   hidroxi: 'hydroxy',
@@ -90,7 +100,13 @@ const MORPHEMES: Record<string, string> = {
   ciano: 'cyano',
   nitro: 'nitro',
   oxo: 'oxo',
+  acetoxi: 'acetyloxy',
+  anoiloxi: 'anoyloxy',
   isopropoxi: 'isopropoxy',
+  isobutoxi: 'isobutoxy',
+  'terc-butoxi': 'tert-butoxy',
+  'sec-butoxi': 'sec-butoxy',
+  neopentiloxi: 'neopentyloxy',
   benziloxi: 'benzyloxy',
   metoxi: 'methoxy',
   etoxi: 'ethoxy',
@@ -126,6 +142,16 @@ const MORPHEMES: Record<string, string> = {
   tri: 'tri',
   di: 'di',
 
+  // A radical joined to its parent by a double or triple bond: metilideno ->
+  // methylidene. Listed whole so the table's longest-match never splits it into
+  // "il" + something it cannot resolve.
+  ilideno: 'ylidene',
+  ilidino: 'ylidyne',
+  ideno: 'idene',
+  idino: 'idyne',
+  amido: 'amido',
+  oxi: 'oxy',
+
   // --- Suffixes (longest first) ---------------------------------------------
   // Portuguese links the parent to a multiplied suffix with "o"; English keeps
   // the hydride's final "e": propanodinitrila -> propanedinitrile.
@@ -151,8 +177,28 @@ const MORPHEMES: Record<string, string> = {
   al: 'al',
 
   // --- Stems ---------------------------------------------------------------
+  // These must cover the same range as the engine's STEM_NAMES, or a name it
+  // can build is a name this bridge cannot check.
+  triacont: 'triacont',
+  henicos: 'henicos',
+  heptadec: 'heptadec',
+  pentadec: 'pentadec',
+  tetradec: 'tetradec',
+  heptacos: 'heptacos',
+  pentacos: 'pentacos',
+  tetracos: 'tetracos',
+  hexadec: 'hexadec',
+  octadec: 'octadec',
+  nonadec: 'nonadec',
+  hexacos: 'hexacos',
+  octacos: 'octacos',
+  nonacos: 'nonacos',
+  tridec: 'tridec',
+  tricos: 'tricos',
+  docos: 'docos',
   undec: 'undec',
   dodec: 'dodec',
+  icos: 'icos',
   hept: 'hept',
   pent: 'pent',
   prop: 'prop',
@@ -167,8 +213,12 @@ const MORPHEMES: Record<string, string> = {
 
 const MORPHEME_KEYS = Object.keys(MORPHEMES).sort((a, b) => b.length - a.length);
 
-/** Characters that carry no morphology: locants, brackets, separators, italics. */
-const SEPARATOR = /^[0-9,\-()\[\]'’ .N]+/;
+/**
+ * Characters that carry no morphology: locants, brackets, separators, italics.
+ * "E" and "Z" belong here — a stereodescriptor is spelled the same in both
+ * languages, and without them every named configuration failed to translate.
+ */
+const SEPARATOR = /^[0-9,\-()\[\]'’ .NEZ]+/;
 
 /**
  * Splits a name into known morphemes, backtracking when a greedy choice leaves

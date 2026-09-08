@@ -226,6 +226,13 @@ export interface AtomNode {
   y: number;
   charge: number;
   implicitH: number;
+  /**
+   * Hydrogen count stated explicitly by the source notation ([nH], [CH3]).
+   * When present it is authoritative and overrides the valence estimate — the
+   * pyrrole nitrogen carries an H that no valence rule can infer, because its
+   * lone pair, not a pi bond, completes the aromatic sextet.
+   */
+  explicitHCount?: number;
   aromatic?: boolean;
   inRing?: boolean;
   ringIds?: number[];
@@ -241,6 +248,12 @@ export interface BondEdge {
   target: string; // AtomNode id
   order: BondOrder;
   style?: BondStyle;
+  /**
+   * Configuration marker carried by the "/" and "\\" of a SMILES single bond.
+   * It says which side of the neighbouring double bond this bond leaves from,
+   * and is what the E/Z assignment reads.
+   */
+  direction?: 'up' | 'down';
   aromatic?: boolean;
   inRing?: boolean;
 }
