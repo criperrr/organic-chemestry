@@ -1,3 +1,4 @@
+import { findStrandedAtoms } from './fragments.js';
 import React, {
   useState,
   useRef,
@@ -15,6 +16,7 @@ import {
   Eraser,
   Undo2,
   Redo2,
+  AlertTriangle,
   Crosshair,
   Trash2,
   Hand,
@@ -113,6 +115,27 @@ function createDefaultInitialGraph(): MolecularGraphData {
 
   return recalculateAllValences({ atoms, bonds });
 }
+
+/**
+ * Renders a molecular formula with its counts as subscripts.
+ *
+ * In a monospace face at this weight, the "O" of C4H12O is indistinguishable
+ * from a zero — a chemistry app cannot leave "C4H120" on screen. Subscripting
+ * the numbers separates the two by shape and position, not by glyph.
+ */
+const FormulaText: React.FC<{ formula: string }> = ({ formula }) => (
+  <>
+    {formula.split(/(\d+)/).map((part, i) =>
+      /^\d+$/.test(part) ? (
+        <sub key={i} className="text-[0.7em] leading-none align-baseline relative -bottom-[0.15em]">
+          {part}
+        </sub>
+      ) : (
+        <span key={i}>{part}</span>
+      )
+    )}
+  </>
+);
 
 export const SkeletalCanvas = forwardRef<SkeletalCanvasHandle, SkeletalCanvasProps>(function
 SkeletalCanvas(
@@ -242,6 +265,9 @@ SkeletalCanvas(
   }, [historyIndex, history, onGraphChange]);
 
   // Centralizar (Recenter graph in canvas)
+  /** Loose atoms, flagged on canvas and in the top bar. See findStrandedAtoms. */
+  const strandedAtomIds = useMemo(() => findStrandedAtoms(currentGraph), [currentGraph]);
+
   const handleRecenter = useCallback(() => {
     if (!svgRef.current || currentGraph.atoms.length === 0) {
       setTransform({ zoom: 1, panX: 0, panY: 0 });
@@ -986,7 +1012,7 @@ SkeletalCanvas(
               <Sparkles className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
               <span>Fórmula:</span>
               <span className="text-sm tracking-wide font-extrabold">
-                {molecularFormula || 'Vazia'}
+                {molecularFormula ? <FormulaText formula={molecularFormula} /> : 'Vazia'}
               </span>
             </div>
 
@@ -995,6 +1021,24 @@ SkeletalCanvas(
               <span className="mx-1.5 opacity-40">•</span>
               <span>{currentGraph.bonds.length} ligações</span>
             </div>
+
+            {/* A loose atom is the usual reason a drawing has no name, and it
+                is often parked off the edge where nobody sees it. Say so, and
+                make the chip itself the way to bring it into view. */}
+            {strandedAtomIds.size > 0 && (
+              <button
+                type="button"
+                onClick={handleRecenter}
+                title="Enquadrar tudo para achar o átomo solto"
+                className="px-2.5 py-1 rounded-full bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)] border border-[var(--md-sys-color-error)] font-bold flex items-center gap-1.5 cursor-pointer active:scale-95 transition-transform"
+              >
+                <AlertTriangle className="w-3.5 h-3.5" />
+                <span>
+                  {strandedAtomIds.size} átomo{strandedAtomIds.size > 1 ? 's' : ''} solto
+                  {strandedAtomIds.size > 1 ? 's' : ''} — enquadrar
+                </span>
+              </button>
+            )}
           </div>
 
           {/* Right: History & Canvas Utilities */}
@@ -1059,7 +1103,7 @@ SkeletalCanvas(
       {showToolbar && !readOnly && (
         <div className="w-full px-3 py-2 bg-[var(--md-sys-color-surface-container-low)] border-b border-[var(--md-sys-color-outline-variant)] flex flex-col gap-2">
           {/* Main Tool Selector Pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs font-semibold">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs font-semibold [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <button
               type="button"
               onClick={() => {
@@ -1481,8 +1525,33 @@ SkeletalCanvas(
               const isSelected = selectedAtomId === atom.id;
               const isHovered = hoveredAtomId === atom.id;
 
+              const isStranded = strandedAtomIds.has(atom.id);
+
               return (
                 <g key={atom.id} className="cursor-pointer">
+                  {/* Stranded-atom warning halo: this atom is not bonded to the
+                      main structure, which is why the molecule has no name. */}
+                  {isStranded && (
+                    <circle
+                      cx={atom.x}
+                      cy={atom.y}
+                      r={display.hasText ? 20 : 14}
+                      fill="var(--md-sys-color-error)"
+                      opacity={0.16}
+                    />
+                  )}
+                  {isStranded && (
+                    <circle
+                      cx={atom.x}
+                      cy={atom.y}
+                      r={display.hasText ? 20 : 14}
+                      fill="none"
+                      stroke="var(--md-sys-color-error)"
+                      strokeWidth={1.5}
+                      strokeDasharray="3 3"
+                    />
+                  )}
+
                   {/* Selection Ring */}
                   {isSelected && (
                     <circle

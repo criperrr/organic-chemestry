@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { findStrandedAtoms } from '@quimicarush/molecule-canvas';
 import {
   analyzeMolecularGraph,
   type MolecularGraphData,
@@ -117,5 +118,49 @@ describe('LiveBuilder naming pipeline (canvas graph -> IUPAC)', () => {
     expect(analysis.isNameable).toBe(false);
     expect(analysis.problems.some(p => p.code === 'no_carbon')).toBe(true);
     expect(analysis.iupacName2013).toBe('');
+  });
+});
+
+describe('Átomos soltos no canvas do Laboratório', () => {
+  const atom = (id: string, x: number, y: number) => ({
+    id, element: 'C' as const, x, y, charge: 0, implicitH: 0,
+  });
+  const bond = (id: string, source: string, target: string) => ({
+    id, source, target, order: 1 as const, style: 'solid' as const,
+  });
+
+  it('não acusa nada quando tudo está ligado', () => {
+    const graph = {
+      atoms: [atom('a1', 0, 0), atom('a2', 40, 0), atom('a3', 80, 0)],
+      bonds: [bond('b1', 'a1', 'a2'), bond('b2', 'a2', 'a3')],
+    };
+    expect(findStrandedAtoms(graph).size).toBe(0);
+  });
+
+  it('aponta o átomo largado fora da estrutura principal', () => {
+    // Exatamente o caso do print: propanol desenhado mais um carbono perdido
+    // no topo, que o usuário não vê e que faz a fórmula virar C4H12O.
+    const graph = {
+      atoms: [
+        atom('a1', 0, 0), atom('a2', 40, 0), atom('a3', 80, 0),
+        { ...atom('a4', 120, 0), element: 'O' as const },
+        atom('perdido', 400, -900),
+      ],
+      bonds: [bond('b1', 'a1', 'a2'), bond('b2', 'a2', 'a3'), bond('b3', 'a3', 'a4')],
+    };
+    const stranded = findStrandedAtoms(graph);
+    expect([...stranded]).toEqual(['perdido']);
+  });
+
+  it('mantém o maior fragmento como a molécula, não o primeiro desenhado', () => {
+    const graph = {
+      atoms: [atom('solto', 0, 0), atom('a1', 40, 0), atom('a2', 80, 0), atom('a3', 120, 0)],
+      bonds: [bond('b1', 'a1', 'a2'), bond('b2', 'a2', 'a3')],
+    };
+    expect([...findStrandedAtoms(graph)]).toEqual(['solto']);
+  });
+
+  it('um átomo sozinho na tela ainda não é um erro', () => {
+    expect(findStrandedAtoms({ atoms: [atom('a1', 0, 0)], bonds: [] }).size).toBe(0);
   });
 });

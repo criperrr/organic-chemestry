@@ -26,3 +26,4 @@ export {
   ELEMENT_COLORS,
 } from './valence.js';
 export { haptics } from './haptics.js';
+export { findStrandedAtoms } from './fragments.js';
