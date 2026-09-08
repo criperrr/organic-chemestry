@@ -7,3 +7,8 @@ dist/
 coverage/
 tools-opsin-*.jar
 tools/audit-output/
+
+# Checkout de ferramentas de agente: repositório próprio, não faz parte do app.
+# Estava commitado como gitlink sem .gitmodules, o que quebrava todo clone novo
+# (e com ele o build do Netlify).
+.agents/

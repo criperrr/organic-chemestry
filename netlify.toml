@@ -1,0 +1,30 @@
+# Deploy do QuímicaRush (packages/web-app).
+#
+# O repositório é um monorepo com npm workspaces: o build precisa rodar da raiz
+# para que os pacotes irmãos (chemistry-core, molecule-canvas, ...) sejam
+# resolvidos, e só a pasta dist do web-app é publicada.
+[build]
+  command = "npm run build -w packages/web-app"
+  publish = "packages/web-app/dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+  # O jar do OPSIN (14 MB) só serve às auditorias offline e está no .gitignore;
+  # nada no build o consulta.
+  NPM_FLAGS = "--include=dev"
+
+# SPA: qualquer rota cai no index.html em vez de 404.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
