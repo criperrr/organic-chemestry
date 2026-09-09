@@ -171,11 +171,22 @@ export function calculateValences(graph: MolecularGraph): void {
     // The bump counts towards saturation only — the *target* valence of sulfur
     // and phosphorus is picked from their sigma-bond count, so adding it before
     // that decision would promote thiophene's S to valence 4 and invent an H.
+    //
+    // The bump applies only when the ring really is written without Kekulé
+    // bonds. A pyrrole drawn on the canvas *is* Kekulé — its two double bonds
+    // sit on the carbons — and its nitrogen contributes a lone pair instead of
+    // a pi bond, so bumping it there would strip the N-H and report C4H4N.
     const sigmaValence = explicitValence;
+    const neighbourIsKekule = neighbors.some(edge => {
+      const neighbour = graph.atoms.get(edge.neighborId);
+      if (!neighbour?.aromatic) return false;
+      return graph.getNeighbors(neighbour.id).some(n => n.order > 1);
+    });
     if (
       atom.aromatic &&
       atom.explicitHCount === undefined &&
-      !neighbors.some(n => n.order > 1)
+      !neighbors.some(n => n.order > 1) &&
+      !neighbourIsKekule
     ) {
       explicitValence += 1;
     }

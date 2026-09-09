@@ -41,6 +41,12 @@ import type {
   SkeletalCanvasHandle,
 } from './types.js';
 import {
+  ELEMENT_OPTIONS,
+  FUNCTIONAL_GROUPS,
+  RING_TEMPLATES,
+} from './catalog.js';
+import { FragmentPreview, previewGroup, previewRing } from './FragmentPreview.js';
+import {
   BOND_LENGTH,
   SNAP_RADIUS,
   getSnappedBondPoint,
@@ -60,39 +66,6 @@ import {
 } from './valence.js';
 import { haptics } from './haptics.js';
 import { soundSynth } from '@quimicarush/gamification-engine';
-
-const ELEMENT_OPTIONS: { element: AtomElement; label: string; desc: string }[] = [
-  { element: 'C', label: 'C', desc: 'Carbono' },
-  { element: 'O', label: 'O', desc: 'Oxigênio' },
-  { element: 'N', label: 'N', desc: 'Nitrogênio' },
-  { element: 'Cl', label: 'Cl', desc: 'Cloro' },
-  { element: 'Br', label: 'Br', desc: 'Bromo' },
-  { element: 'F', label: 'F', desc: 'Flúor' },
-  { element: 'I', label: 'I', desc: 'Iodo' },
-];
-
-const FUNCTIONAL_GROUPS: { type: FunctionalGroupType; label: string; name: string }[] = [
-  { type: '-OH', label: '-OH', name: 'Álcool (Hidroxila)' },
-  { type: '=O', label: '=O', name: 'Carbonila (Cetona/Aldeído)' },
-  { type: '-COOH', label: '-COOH', name: 'Carboxila (Ácido)' },
-  { type: '-NH2', label: '-NH2', name: 'Amina (Amino)' },
-  { type: '-NO2', label: '-NO2', name: 'Nitro' },
-  { type: '-OCH3', label: '-OCH3', name: 'Metóxi (Éter)' },
-  { type: '-C#N', label: '-C≡N', name: 'Nitrila (Ciano)' },
-  { type: '-CH3', label: '-CH3', name: 'Metil' },
-  { type: '-CH2CH3', label: '-CH2CH3', name: 'Etil' },
-  { type: '-CH(CH3)2', label: 'Isopropil', name: 'Isopropil' },
-  { type: '-C(CH3)3', label: 'terc-Butil', name: 'terc-Butil' },
-  { type: '-C6H5', label: 'Fenil', name: 'Fenil' },
-];
-
-const RING_TEMPLATES: { type: RingTemplateType; label: string; name: string }[] = [
-  { type: 'benzene', label: 'Benzeno', name: 'Anel Aromático (Benzeno)' },
-  { type: 'cyclohexane', label: 'Ciclo-hexano', name: 'Ciclo-hexano (6C)' },
-  { type: 'cyclopentane', label: 'Ciclopentano', name: 'Ciclopentano (5C)' },
-  { type: 'cyclobutane', label: 'Ciclobutano', name: 'Ciclobutano (4C)' },
-  { type: 'cyclopropane', label: 'Ciclopropano', name: 'Ciclopropano (3C)' },
-];
 
 /**
  * Creates an initial ethanol molecule (CH3-CH2-OH) centered around (240, 200)
@@ -987,11 +960,69 @@ SkeletalCanvas(
     };
   }, [handleUndo, handleRedo, selectedAtomId, deleteAtom, handleRecenter, changeAtomElement]);
 
-  // Ghost ring vertices for stamp tool hover preview
-  const ghostRing = useMemo(() => {
-    if (activeTool !== 'ring' || !mouseWorldPos) return null;
-    return createRingTemplate(selectedRing, mouseWorldPos, BOND_LENGTH);
-  }, [activeTool, mouseWorldPos, selectedRing]);
+  // Ghost preview of whatever the active stamp tool is about to add: the ring
+  // under the cursor, the ring as it would hang off the hovered atom, or the
+  // functional group on the atom being pointed at. Seeing the fragment before
+  // committing is the difference between placing furan and guessing at it.
+  const ghostFragment = useMemo(() => {
+    if (readOnly) return null;
+
+    if (activeTool === 'ring') {
+      const hoveredAtom = hoveredAtomId ? atomMap.get(hoveredAtomId) : undefined;
+      if (hoveredAtom) {
+        const angle = findBestAttachmentAngle(hoveredAtom.id, currentGraph);
+        const ringDist = BOND_LENGTH * 2;
+        const ring = createRingTemplate(
+          selectedRing,
+          {
+            x: hoveredAtom.x + ringDist * Math.cos(angle),
+            y: hoveredAtom.y + ringDist * Math.sin(angle),
+          },
+          BOND_LENGTH
+        );
+
+        // Show the bond that will tie the ring to the atom, too.
+        let closest = ring.atoms[0]!;
+        let minDSq = Infinity;
+        for (const rAtom of ring.atoms) {
+          const dSq = (rAtom.x - hoveredAtom.x) ** 2 + (rAtom.y - hoveredAtom.y) ** 2;
+          if (dSq < minDSq) {
+            minDSq = dSq;
+            closest = rAtom;
+          }
+        }
+        return {
+          atoms: [hoveredAtom, ...ring.atoms],
+          bonds: [
+            ...ring.bonds,
+            { id: 'ghost-link', source: hoveredAtom.id, target: closest.id, order: 1 as BondOrder },
+          ],
+        };
+      }
+
+      if (!mouseWorldPos) return null;
+      return createRingTemplate(selectedRing, mouseWorldPos, BOND_LENGTH);
+    }
+
+    if (activeTool === 'functional_group') {
+      const hoveredAtom = hoveredAtomId ? atomMap.get(hoveredAtomId) : undefined;
+      if (!hoveredAtom) return null;
+      const angle = findBestAttachmentAngle(hoveredAtom.id, currentGraph);
+      const fragment = buildSubstituentGroup(selectedGroup, hoveredAtom, angle, BOND_LENGTH);
+      return { atoms: [hoveredAtom, ...fragment.atoms], bonds: fragment.bonds };
+    }
+
+    return null;
+  }, [
+    readOnly,
+    activeTool,
+    hoveredAtomId,
+    atomMap,
+    currentGraph,
+    mouseWorldPos,
+    selectedRing,
+    selectedGroup,
+  ]);
 
   return (
     <div
@@ -1261,14 +1292,15 @@ SkeletalCanvas(
                       }
                       soundSynth.playClick();
                     }}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                    className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
                       isSelected
                         ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] ring-2 ring-[var(--md-sys-color-primary)]'
                         : 'bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-highest)]'
                     }`}
                     title={`Anexar ${grp.name}`}
                   >
-                    {grp.label}
+                    <FragmentPreview {...previewGroup(grp.type)} size={26} />
+                    <span>{grp.label}</span>
                   </button>
                 );
               })}
@@ -1293,14 +1325,15 @@ SkeletalCanvas(
                       }
                       soundSynth.playClick();
                     }}
-                    className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                    className={`px-3 py-1 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
                       isSelected
                         ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] ring-2 ring-[var(--md-sys-color-primary)]'
                         : 'bg-[var(--md-sys-color-surface-container-high)] text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-highest)]'
                     }`}
                     title={ring.name}
                   >
-                    {ring.label}
+                    <FragmentPreview {...previewRing(ring.type)} size={26} />
+                    <span>{ring.label}</span>
                   </button>
                 );
               })}
@@ -1494,25 +1527,52 @@ SkeletalCanvas(
             {/* ------------------------------------------------------------------- */}
             {/* 3. Render Ghost Ring while Stamp Tool is Active                     */}
             {/* ------------------------------------------------------------------- */}
-            {ghostRing && (
-              <g pointerEvents="none" opacity={0.4}>
-                {ghostRing.bonds.map((gb) => {
-                  const s = ghostRing.atoms.find((a) => a.id === gb.source);
-                  const t = ghostRing.atoms.find((a) => a.id === gb.target);
+            {ghostFragment && (
+              <g pointerEvents="none" opacity={0.45}>
+                {ghostFragment.bonds.map((gb) => {
+                  const s = ghostFragment.atoms.find((a) => a.id === gb.source);
+                  const t = ghostFragment.atoms.find((a) => a.id === gb.target);
                   if (!s || !t) return null;
+                  const dx = t.x - s.x;
+                  const dy = t.y - s.y;
+                  const len = Math.hypot(dx, dy) || 1;
+                  const nx = -dy / len;
+                  const ny = dx / len;
+                  const offsets = gb.order === 2 ? [-3, 3] : gb.order === 3 ? [-5, 0, 5] : [0];
                   return (
-                    <line
-                      key={gb.id}
-                      x1={s.x}
-                      y1={s.y}
-                      x2={t.x}
-                      y2={t.y}
-                      stroke="var(--md-sys-color-primary)"
-                      strokeWidth={2}
-                      strokeDasharray="3 3"
-                    />
+                    <g key={gb.id}>
+                      {offsets.map((offset, index) => (
+                        <line
+                          key={index}
+                          x1={s.x + nx * offset}
+                          y1={s.y + ny * offset}
+                          x2={t.x + nx * offset}
+                          y2={t.y + ny * offset}
+                          stroke="var(--md-sys-color-primary)"
+                          strokeWidth={2}
+                          strokeDasharray="3 3"
+                        />
+                      ))}
+                    </g>
                   );
                 })}
+                {ghostFragment.atoms
+                  .filter((a) => a.element !== 'C' && !atomMap.has(a.id))
+                  .map((a) => (
+                    <text
+                      key={a.id}
+                      x={a.x}
+                      y={a.y}
+                      fill={ELEMENT_COLORS[a.element]}
+                      fontSize={13}
+                      fontWeight="bold"
+                      fontFamily="monospace"
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                    >
+                      {a.element}
+                    </text>
+                  ))}
               </g>
             )}
 

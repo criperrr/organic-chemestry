@@ -262,6 +262,8 @@ export interface GameStore {
   userInput: string;
   slotState: SlotBuilderState;
   isFullscreen: boolean;
+  /** The full-screen Molecule Studio, opened over everything else. */
+  isStudioOpen: boolean;
 
   // Evaluation & feedback
   currentEvaluation: EvaluationResult | null;
@@ -277,6 +279,7 @@ export interface GameStore {
   // Actions
   initSession: () => void;
   setCurrentMolecule: (mol: Molecule) => void;
+  setStudioOpen: (open: boolean) => void;
   toggleFullscreen: () => void;
   setFullscreen: (val: boolean) => void;
   loadBadgesFromDb: () => Promise<void>;
@@ -407,6 +410,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   userInput: '',
   slotState: { ...INITIAL_SLOT_STATE },
   isFullscreen: false,
+  isStudioOpen: false,
 
   currentEvaluation: null,
   isAnswerSubmitted: false,
@@ -1082,6 +1086,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
       rewardFloaters: [],
       nearMissNotice: null,
     });
+  },
+
+  setStudioOpen: (open: boolean) => {
+    const { soundEnabled } = get();
+    if (soundEnabled) soundSynth.playClick();
+    set({ isStudioOpen: open });
   },
 
   toggleFullscreen: () => {

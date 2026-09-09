@@ -14,6 +14,7 @@ import {
   Layers,
   Info,
   BookOpen,
+  Maximize2,
 } from 'lucide-react';
 import { FluidMolecule } from './FluidMolecule.js';
 import {
@@ -59,6 +60,7 @@ export const SandboxHub: React.FC = () => {
     openMoleculeZoom,
     playClickSound,
     playSnapSound,
+    setStudioOpen,
   } = useGameStore();
 
   // Curated list of all canonical molecules
@@ -245,6 +247,18 @@ export const SandboxHub: React.FC = () => {
               </button>
             ))}
           </div>
+
+          {sandboxMode === 'construtor' && (
+            <button
+              type="button"
+              onClick={() => setStudioOpen(true)}
+              className="m3-button-filled text-xs py-2 px-3.5 flex items-center gap-1.5 shadow-sm"
+              title="Abrir o Estúdio: tela cheia para desenhar, com painéis flutuantes"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+              <span>Estúdio em tela cheia</span>
+            </button>
+          )}
 
           {sandboxMode === 'presets' && (
           <>

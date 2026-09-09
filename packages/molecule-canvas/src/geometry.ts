@@ -207,6 +207,63 @@ export function findBestAttachmentAngle(
 }
 
 /**
+ * Geometry and chemistry of every ring template, in one table.
+ *
+ * `hetero` places a heteroatom at a vertex index; `doubleBonds` lists the ring
+ * bond indices (bond i joins vertex i to vertex i+1) that are drawn double, so
+ * an aromatic five-ring puts its two double bonds around the heteroatom instead
+ * of on it. Naming these correctly is the job of chemistry-core's heterocycle
+ * table — the canvas only has to hand it a chemically sane drawing.
+ */
+export const RING_SPECS: Record<
+  RingTemplateType,
+  {
+    sides: number;
+    aromatic: boolean;
+    initialAngle: number;
+    hetero?: Record<number, AtomElement>;
+    doubleBonds?: number[];
+  }
+> = {
+  cyclopropane: { sides: 3, aromatic: false, initialAngle: -Math.PI / 2 },
+  cyclobutane: { sides: 4, aromatic: false, initialAngle: -Math.PI / 4 },
+  cyclopentane: { sides: 5, aromatic: false, initialAngle: -Math.PI / 2 },
+  cyclohexane: { sides: 6, aromatic: false, initialAngle: -Math.PI / 6 },
+  cycloheptane: { sides: 7, aromatic: false, initialAngle: -Math.PI / 2 },
+  benzene: { sides: 6, aromatic: true, initialAngle: -Math.PI / 6, doubleBonds: [0, 2, 4] },
+  pyridine: {
+    sides: 6,
+    aromatic: true,
+    initialAngle: -Math.PI / 2,
+    hetero: { 0: 'N' },
+    doubleBonds: [0, 2, 4],
+  },
+  pyrrole: {
+    sides: 5,
+    aromatic: true,
+    initialAngle: -Math.PI / 2,
+    hetero: { 0: 'N' },
+    doubleBonds: [1, 3],
+  },
+  furan: {
+    sides: 5,
+    aromatic: true,
+    initialAngle: -Math.PI / 2,
+    hetero: { 0: 'O' },
+    doubleBonds: [1, 3],
+  },
+  thiophene: {
+    sides: 5,
+    aromatic: true,
+    initialAngle: -Math.PI / 2,
+    hetero: { 0: 'S' },
+    doubleBonds: [1, 3],
+  },
+  piperidine: { sides: 6, aromatic: false, initialAngle: -Math.PI / 2, hetero: { 0: 'N' } },
+  oxolane: { sides: 5, aromatic: false, initialAngle: -Math.PI / 2, hetero: { 0: 'O' } },
+};
+
+/**
  * Creates a regular cyclic ring template centered at (centerX, centerY)
  */
 export function createRingTemplate(
@@ -214,33 +271,9 @@ export function createRingTemplate(
   center: { x: number; y: number },
   bondLength: number = BOND_LENGTH
 ): { atoms: AtomNode[]; bonds: BondEdge[] } {
-  let sides = 6;
-  let isAromatic = false;
-  let initialAngle = -Math.PI / 2; // Flat top or vertex up
-
-  switch (type) {
-    case 'cyclopropane':
-      sides = 3;
-      initialAngle = -Math.PI / 2;
-      break;
-    case 'cyclobutane':
-      sides = 4;
-      initialAngle = -Math.PI / 4;
-      break;
-    case 'cyclopentane':
-      sides = 5;
-      initialAngle = -Math.PI / 2;
-      break;
-    case 'cyclohexane':
-      sides = 6;
-      initialAngle = -Math.PI / 6;
-      break;
-    case 'benzene':
-      sides = 6;
-      isAromatic = true;
-      initialAngle = -Math.PI / 6;
-      break;
-  }
+  const spec = RING_SPECS[type] ?? RING_SPECS.cyclohexane;
+  const { sides, aromatic, initialAngle } = spec;
+  const doubleBonds = new Set(spec.doubleBonds ?? []);
 
   // Polygon circumradius R = L / (2 * sin(PI / sides))
   const radius = bondLength / (2 * Math.sin(Math.PI / sides));
@@ -249,39 +282,29 @@ export function createRingTemplate(
 
   for (let i = 0; i < sides; i++) {
     const angle = initialAngle + (i * 2 * Math.PI) / sides;
-    const x = Math.round(center.x + radius * Math.cos(angle));
-    const y = Math.round(center.y + radius * Math.sin(angle));
-    const atomId = generateUniqueId('c');
-
+    const element = spec.hetero?.[i] ?? 'C';
     atoms.push({
-      id: atomId,
-      element: 'C',
-      x,
-      y,
+      id: generateUniqueId(element.toLowerCase()),
+      element,
+      x: Math.round(center.x + radius * Math.cos(angle)),
+      y: Math.round(center.y + radius * Math.sin(angle)),
       charge: 0,
-      implicitH: isAromatic ? 1 : 2,
+      // Corrected by recalculateAllValences the moment the ring is committed.
+      implicitH: element === 'C' ? (aromatic ? 1 : 2) : 0,
       inRing: true,
-      aromatic: isAromatic,
+      aromatic,
     });
   }
 
-  // Create ring bonds
   for (let i = 0; i < sides; i++) {
     const src = atoms[i]!;
     const tgt = atoms[(i + 1) % sides]!;
-    let order: BondOrder = 1;
-
-    if (type === 'benzene') {
-      // Alternating double bonds (order 2, 1, 2, 1, 2, 1)
-      order = i % 2 === 0 ? 2 : 1;
-    }
-
     bonds.push({
       id: generateUniqueId('b'),
       source: src.id,
       target: tgt.id,
-      order,
-      aromatic: isAromatic,
+      order: (doubleBonds.has(i) ? 2 : 1) as BondOrder,
+      aromatic,
       inRing: true,
     });
   }
@@ -461,6 +484,219 @@ export function buildSubstituentGroup(
       const m3Angle = angleRad + Math.PI / 3;
       const cM3 = makeAtom('C', cQuat.x + bondLength * Math.cos(m3Angle), cQuat.y + bondLength * Math.sin(m3Angle), 0, 3);
       addBond(cQuat.id, cM3.id, 1);
+      break;
+    }
+
+    case '-F':
+    case '-Cl':
+    case '-Br':
+    case '-I': {
+      // Halogen: a single bond to one halogen atom.
+      const element = type.slice(1) as AtomElement;
+      const halogen = makeAtom(
+        element,
+        anchorAtom.x + bondLength * cosA,
+        anchorAtom.y + bondLength * sinA,
+        0,
+        0
+      );
+      addBond(anchorAtom.id, halogen.id, 1);
+      break;
+    }
+
+    case '-SH': {
+      // Tiol: enxofre com um hidrogênio.
+      const sAtom = makeAtom('S', anchorAtom.x + bondLength * cosA, anchorAtom.y + bondLength * sinA, 0, 1);
+      addBond(anchorAtom.id, sAtom.id, 1);
+      break;
+    }
+
+    case '-CHO': {
+      // Aldehyde: -CH=O, the H is implicit.
+      const cAtom = makeAtom('C', anchorAtom.x + bondLength * cosA, anchorAtom.y + bondLength * sinA, 0, 1);
+      addBond(anchorAtom.id, cAtom.id, 1);
+
+      const oAngle = angleRad + Math.PI / 3;
+      const oAtom = makeAtom('O', cAtom.x + bondLength * Math.cos(oAngle), cAtom.y + bondLength * Math.sin(oAngle), 0, 0);
+      addBond(cAtom.id, oAtom.id, 2);
+      break;
+    }
+
+    case '-COCH3': {
+      // Acetyl (ketone when attached to a chain): -C(=O)-CH3
+      const cAtom = makeAtom('C', anchorAtom.x + bondLength * cosA, anchorAtom.y + bondLength * sinA, 0, 0);
+      addBond(anchorAtom.id, cAtom.id, 1);
+
+      const oAngle = angleRad + Math.PI / 3;
+      const oAtom = makeAtom('O', cAtom.x + bondLength * Math.cos(oAngle), cAtom.y + bondLength * Math.sin(oAngle), 0, 0);
+      addBond(cAtom.id, oAtom.id, 2);
+
+      const mAngle = angleRad - Math.PI / 3;
+      const mAtom = makeAtom('C', cAtom.x + bondLength * Math.cos(mAngle), cAtom.y + bondLength * Math.sin(mAngle), 0, 3);
+      addBond(cAtom.id, mAtom.id, 1);
+      break;
+    }
+
+    case '-COOCH3': {
+      // Methyl ester: -C(=O)-O-CH3
+      const cAtom = makeAtom('C', anchorAtom.x + bondLength * cosA, anchorAtom.y + bondLength * sinA, 0, 0);
+      addBond(anchorAtom.id, cAtom.id, 1);
+
+      const oAngle = angleRad + Math.PI / 3;
+      const oDouble = makeAtom('O', cAtom.x + bondLength * Math.cos(oAngle), cAtom.y + bondLength * Math.sin(oAngle), 0, 0);
+      addBond(cAtom.id, oDouble.id, 2);
+
+      const esterAngle = angleRad - Math.PI / 3;
+      const oSingle = makeAtom(
+        'O',
+        cAtom.x + bondLength * Math.cos(esterAngle),
+        cAtom.y + bondLength * Math.sin(esterAngle),
+        0,
+        0
+      );
+      addBond(cAtom.id, oSingle.id, 1);
+
+      const mAtom = makeAtom(
+        'C',
+        oSingle.x + bondLength * Math.cos(angleRad),
+        oSingle.y + bondLength * Math.sin(angleRad),
+        0,
+        3
+      );
+      addBond(oSingle.id, mAtom.id, 1);
+      break;
+    }
+
+    case '-CONH2': {
+      // Primary amide: -C(=O)-NH2
+      const cAtom = makeAtom('C', anchorAtom.x + bondLength * cosA, anchorAtom.y + bondLength * sinA, 0, 0);
+      addBond(anchorAtom.id, cAtom.id, 1);
+
+      const oAngle = angleRad + Math.PI / 3;
+      const oAtom = makeAtom('O', cAtom.x + bondLength * Math.cos(oAngle), cAtom.y + bondLength * Math.sin(oAngle), 0, 0);
+      addBond(cAtom.id, oAtom.id, 2);
+
+      const nAngle = angleRad - Math.PI / 3;
+      const nAtom = makeAtom('N', cAtom.x + bondLength * Math.cos(nAngle), cAtom.y + bondLength * Math.sin(nAngle), 0, 2);
+      addBond(cAtom.id, nAtom.id, 1);
+      break;
+    }
+
+    case '-COCl': {
+      // Acyl chloride: -C(=O)-Cl
+      const cAtom = makeAtom('C', anchorAtom.x + bondLength * cosA, anchorAtom.y + bondLength * sinA, 0, 0);
+      addBond(anchorAtom.id, cAtom.id, 1);
+
+      const oAngle = angleRad + Math.PI / 3;
+      const oAtom = makeAtom('O', cAtom.x + bondLength * Math.cos(oAngle), cAtom.y + bondLength * Math.sin(oAngle), 0, 0);
+      addBond(cAtom.id, oAtom.id, 2);
+
+      const clAngle = angleRad - Math.PI / 3;
+      const clAtom = makeAtom('Cl', cAtom.x + bondLength * Math.cos(clAngle), cAtom.y + bondLength * Math.sin(clAngle), 0, 0);
+      addBond(cAtom.id, clAtom.id, 1);
+      break;
+    }
+
+    case '-NHCH3': {
+      // Secondary amine: -NH-CH3
+      const nAtom = makeAtom('N', anchorAtom.x + bondLength * cosA, anchorAtom.y + bondLength * sinA, 0, 1);
+      addBond(anchorAtom.id, nAtom.id, 1);
+
+      const mAngle = angleRad + Math.PI / 3;
+      const mAtom = makeAtom('C', nAtom.x + bondLength * Math.cos(mAngle), nAtom.y + bondLength * Math.sin(mAngle), 0, 3);
+      addBond(nAtom.id, mAtom.id, 1);
+      break;
+    }
+
+    case '-N(CH3)2': {
+      // Tertiary amine: -N(CH3)2
+      const nAtom = makeAtom('N', anchorAtom.x + bondLength * cosA, anchorAtom.y + bondLength * sinA, 0, 0);
+      addBond(anchorAtom.id, nAtom.id, 1);
+
+      const m1Angle = angleRad + Math.PI / 3;
+      const m1 = makeAtom('C', nAtom.x + bondLength * Math.cos(m1Angle), nAtom.y + bondLength * Math.sin(m1Angle), 0, 3);
+      addBond(nAtom.id, m1.id, 1);
+
+      const m2Angle = angleRad - Math.PI / 3;
+      const m2 = makeAtom('C', nAtom.x + bondLength * Math.cos(m2Angle), nAtom.y + bondLength * Math.sin(m2Angle), 0, 3);
+      addBond(nAtom.id, m2.id, 1);
+      break;
+    }
+
+    case '-OC2H5': {
+      // Ethoxy ether: -O-CH2-CH3
+      const oAtom = makeAtom('O', anchorAtom.x + bondLength * cosA, anchorAtom.y + bondLength * sinA, 0, 0);
+      addBond(anchorAtom.id, oAtom.id, 1);
+
+      const c1Angle = angleRad + Math.PI / 3;
+      const c1 = makeAtom('C', oAtom.x + bondLength * Math.cos(c1Angle), oAtom.y + bondLength * Math.sin(c1Angle), 0, 2);
+      addBond(oAtom.id, c1.id, 1);
+
+      const c2 = makeAtom('C', c1.x + bondLength * cosA, c1.y + bondLength * sinA, 0, 3);
+      addBond(c1.id, c2.id, 1);
+      break;
+    }
+
+    case '-CH=CH2': {
+      // Vinyl (etenil): -CH=CH2
+      const c1 = makeAtom('C', anchorAtom.x + bondLength * cosA, anchorAtom.y + bondLength * sinA, 0, 1);
+      addBond(anchorAtom.id, c1.id, 1);
+
+      const bendAngle = angleRad + Math.PI / 3;
+      const c2 = makeAtom('C', c1.x + bondLength * Math.cos(bendAngle), c1.y + bondLength * Math.sin(bendAngle), 0, 2);
+      addBond(c1.id, c2.id, 2);
+      break;
+    }
+
+    case '-C#CH': {
+      // Ethynyl: -C≡CH, drawn straight because a triple bond is linear.
+      const c1 = makeAtom('C', anchorAtom.x + bondLength * cosA, anchorAtom.y + bondLength * sinA, 0, 0);
+      addBond(anchorAtom.id, c1.id, 1);
+
+      const c2 = makeAtom('C', c1.x + bondLength * cosA, c1.y + bondLength * sinA, 0, 1);
+      addBond(c1.id, c2.id, 3);
+      break;
+    }
+
+    case '-CH2CH2CH3': {
+      // Propyl radical, drawn as a zigzag.
+      const c1 = makeAtom('C', anchorAtom.x + bondLength * cosA, anchorAtom.y + bondLength * sinA, 0, 2);
+      addBond(anchorAtom.id, c1.id, 1);
+
+      const upAngle = angleRad + Math.PI / 3;
+      const c2 = makeAtom('C', c1.x + bondLength * Math.cos(upAngle), c1.y + bondLength * Math.sin(upAngle), 0, 2);
+      addBond(c1.id, c2.id, 1);
+
+      const c3 = makeAtom('C', c2.x + bondLength * cosA, c2.y + bondLength * sinA, 0, 3);
+      addBond(c2.id, c3.id, 1);
+      break;
+    }
+
+    case '-CH2C6H5': {
+      // Benzyl: a CH2 spacer carrying a phenyl ring.
+      const ch2 = makeAtom('C', anchorAtom.x + bondLength * cosA, anchorAtom.y + bondLength * sinA, 0, 2);
+      addBond(anchorAtom.id, ch2.id, 1);
+
+      const ringDist = bondLength * 2;
+      const ring = createRingTemplate(
+        'benzene',
+        { x: ch2.x + ringDist * cosA, y: ch2.y + ringDist * sinA },
+        bondLength
+      );
+
+      let closest = ring.atoms[0]!;
+      let minD = Infinity;
+      for (const rAtom of ring.atoms) {
+        const d = (rAtom.x - ch2.x) ** 2 + (rAtom.y - ch2.y) ** 2;
+        if (d < minD) {
+          minD = d;
+          closest = rAtom;
+        }
+      }
+
+      atoms.push(...ring.atoms);
+      bonds.push(...ring.bonds);
+      addBond(ch2.id, closest.id, 1);
       break;
     }
 

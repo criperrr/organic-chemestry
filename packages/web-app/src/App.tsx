@@ -13,6 +13,7 @@ import { KeyboardShortcuts } from './components/KeyboardShortcuts.js';
 import { KeyboardCheatsheetModal } from './components/KeyboardCheatsheetModal.js';
 import { AchievementsModal } from './components/AchievementsModal.js';
 import { MoleculeZoomModal } from './components/MoleculeZoomModal.js';
+import { StudioOverlay } from './components/StudioOverlay.js';
 import { FluidMolecule } from './components/FluidMolecule.js';
 import { soundSynth } from '@quimicarush/gamification-engine';
 import { useGameStore } from './stores/useGameStore.js';
@@ -93,6 +94,9 @@ export const App: React.FC = () => {
       <AchievementsModal />
       <MoleculeZoomModal />
       <MobileControlSheet />
+
+      {/* Full-screen structural editor, over everything when open */}
+      <StudioOverlay />
 
       {/* Persistent Floating Exit Fullscreen / Modo Foco Pill Button */}
       {isFullscreen && (

@@ -11,6 +11,7 @@ import {
   EyeOff,
   Target,
   Beaker,
+  Maximize2,
 } from 'lucide-react';
 import {
   analyzeMolecularGraph,
@@ -35,7 +36,7 @@ const EMPTY_GRAPH: MolecularGraphData = { atoms: [], bonds: [] };
  * present, and a step-by-step derivation of *why* the name is what it is.
  */
 export const LiveBuilder: React.FC = () => {
-  const { setCurrentMolecule, setActiveTab, openMoleculeZoom } = useGameStore();
+  const { setCurrentMolecule, setActiveTab, openMoleculeZoom, setStudioOpen } = useGameStore();
 
   const [graph, setGraph] = useState<MolecularGraphData>(EMPTY_GRAPH);
   const [showSteps, setShowSteps] = useState(true);
@@ -295,6 +296,16 @@ export const LiveBuilder: React.FC = () => {
       {/* ------------------------------------------------------------------ */}
       {/* The drawing surface                                                 */}
       {/* ------------------------------------------------------------------ */}
+      <button
+        type="button"
+        onClick={() => setStudioOpen(true)}
+        className="m3-button-filled w-full py-2.5 text-sm justify-center gap-2"
+        title="Abrir o Estúdio: a tela inteira para desenhar, com painéis flutuantes"
+      >
+        <Maximize2 className="w-4 h-4" />
+        Abrir Estúdio em tela cheia
+      </button>
+
       <SkeletalCanvas onGraphChange={setGraph} height={520} />
 
       {/* ------------------------------------------------------------------ */}

@@ -15,6 +15,7 @@ export {
   findNearestBond,
   findBestAttachmentAngle,
   createRingTemplate,
+  RING_SPECS,
   buildSubstituentGroup,
   generateUniqueId,
   getGraphBounds,
@@ -27,3 +28,18 @@ export {
 } from './valence.js';
 export { haptics } from './haptics.js';
 export { findStrandedAtoms } from './fragments.js';
+export { FragmentPreview, previewRing, previewGroup } from './FragmentPreview.js';
+export type { FragmentPreviewProps } from './FragmentPreview.js';
+export {
+  ELEMENT_OPTIONS,
+  FUNCTIONAL_GROUPS,
+  RING_TEMPLATES,
+  groupPalette,
+} from './catalog.js';
+export type { PaletteEntry } from './catalog.js';
+
+/** Full-bleed Studio shell: canvas + floating, dismissible panels. */
+export { MoleculeStudio } from './studio/MoleculeStudio.js';
+export type { MoleculeStudioProps } from './studio/MoleculeStudio.js';
+export { FloatingToolbar } from './studio/FloatingToolbar.js';
+export { Balloon } from './studio/Balloon.js';

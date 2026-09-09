@@ -22,7 +22,14 @@ export type RingTemplateType =
   | 'cyclopropane'
   | 'cyclobutane'
   | 'cyclopentane'
-  | 'cyclohexane';
+  | 'cyclohexane'
+  | 'cycloheptane'
+  | 'pyridine'
+  | 'pyrrole'
+  | 'furan'
+  | 'thiophene'
+  | 'piperidine'
+  | 'oxolane';
 
 export type FunctionalGroupType =
   | '-OH'
@@ -36,7 +43,24 @@ export type FunctionalGroupType =
   | '-CH2CH3'
   | '-CH(CH3)2'
   | '-C(CH3)3'
-  | '-C6H5';
+  | '-C6H5'
+  | '-CHO'
+  | '-COCH3'
+  | '-COOCH3'
+  | '-CONH2'
+  | '-COCl'
+  | '-NHCH3'
+  | '-N(CH3)2'
+  | '-SH'
+  | '-OC2H5'
+  | '-CH=CH2'
+  | '-C#CH'
+  | '-CH2C6H5'
+  | '-CH2CH2CH3'
+  | '-F'
+  | '-Cl'
+  | '-Br'
+  | '-I';
 
 export interface ViewTransform {
   zoom: number;
