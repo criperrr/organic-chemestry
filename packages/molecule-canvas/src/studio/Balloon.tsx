@@ -91,15 +91,16 @@ export const Balloon: React.FC<BalloonProps> = ({
         position: 'fixed',
         width: `min(${width}px, calc(100vw - 24px))`,
         ...placement,
+        pointerEvents: 'auto',
       }}
-      className="studio-floating rounded-3xl overflow-hidden pointer-events-auto z-30"
+      className="studio-floating rounded-3xl overflow-hidden pointer-events-auto z-40 shadow-xl"
     >
       <div
         onPointerDown={handleDragStart}
         onPointerMove={handleDragMove}
         onPointerUp={handleDragEnd}
         onPointerCancel={handleDragEnd}
-        className="flex items-center justify-between gap-2 px-3 py-2 cursor-grab active:cursor-grabbing touch-none border-b border-[var(--md-sys-color-outline-variant)]"
+        className="flex items-center justify-between gap-2 px-3 py-2 cursor-grab active:cursor-grabbing touch-none border-b border-[var(--md-sys-color-outline-variant)] select-none"
       >
         <span className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] select-none">
           {icon ?? <GripHorizontal className="w-4 h-4" />}
@@ -110,7 +111,8 @@ export const Balloon: React.FC<BalloonProps> = ({
             type="button"
             onClick={() => setCollapsed(value => !value)}
             title={collapsed ? 'Expandir' : 'Recolher'}
-            className="h-7 w-7 rounded-full flex items-center justify-center text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-highest)]"
+            style={{ pointerEvents: 'auto', cursor: 'pointer' }}
+            className="h-7 w-7 rounded-full flex items-center justify-center text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-highest)] transition-colors cursor-pointer"
           >
             <ChevronDown
               className={`w-4 h-4 transition-transform ${collapsed ? '-rotate-90' : ''}`}
@@ -120,7 +122,8 @@ export const Balloon: React.FC<BalloonProps> = ({
             type="button"
             onClick={onHide}
             title={hideKey ? `Ocultar painel [${hideKey}]` : 'Ocultar painel'}
-            className="h-7 w-7 rounded-full flex items-center justify-center text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-highest)]"
+            style={{ pointerEvents: 'auto', cursor: 'pointer' }}
+            className="h-7 w-7 rounded-full flex items-center justify-center text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-highest)] transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>

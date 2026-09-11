@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@source "../../molecule-canvas";
 
 @layer base {
   :root {
@@ -487,6 +488,12 @@
   -webkit-backdrop-filter: blur(18px) saturate(140%);
   border: 1px solid var(--md-sys-color-outline-variant);
   box-shadow: 0 12px 34px -14px rgba(0, 0, 0, 0.75);
+  pointer-events: auto;
+}
+
+.studio-floating button {
+  cursor: pointer;
+  pointer-events: auto;
 }
 
 /* Controls fade out of the way but stay reachable. */

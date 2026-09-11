@@ -243,14 +243,24 @@ export const MoleculeStudio: React.FC<MoleculeStudioProps> = ({
         className="!rounded-none !border-0 !shadow-none h-full w-full"
       />
 
-      {/* Top Left Floating Bubble (Nav & Panels) */}
-      {!isZenMode && (
-        <div className="studio-floating fixed top-3 left-4 z-30 h-10 px-2 rounded-full flex items-center gap-1 shadow-lg">
+      {/* Top Header Bar across viewport: Left Island, Centered Toolbar, Right Island */}
+      <header
+        className="fixed top-3 inset-x-0 z-50 flex items-start justify-between px-3 sm:px-4 pointer-events-none"
+        style={{ pointerEvents: 'none' }}
+      >
+        {/* Left Island: Treino [1], Acervo [L], Atalhos [K] */}
+        <div
+          className={`studio-floating h-10 px-2 rounded-full flex items-center gap-1 shadow-lg pointer-events-auto transition-all duration-200 ${
+            isZenMode ? 'opacity-0 pointer-events-none scale-95' : 'opacity-100 scale-100'
+          }`}
+          style={{ pointerEvents: isZenMode ? 'none' : 'auto' }}
+        >
           {(onExit || onNavigateTab) && (
             <button
               type="button"
               onClick={() => (onNavigateTab ? onNavigateTab('arcade') : onExit?.())}
               title="Voltar ao Treino Arcade [1] ou [Esc]"
+              style={{ pointerEvents: 'auto', cursor: 'pointer' }}
               className="h-7 px-2.5 rounded-full flex items-center gap-1.5 text-xs font-semibold text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-highest)] transition-colors cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
@@ -265,6 +275,7 @@ export const MoleculeStudio: React.FC<MoleculeStudioProps> = ({
             type="button"
             onClick={() => setShowStarters(v => !v)}
             title="Abrir acervo de moléculas [L]"
+            style={{ pointerEvents: 'auto', cursor: 'pointer' }}
             className={`h-7 px-2.5 rounded-full flex items-center gap-1.5 text-xs font-semibold transition-colors cursor-pointer ${
               showStarters
                 ? 'bg-[var(--md-sys-color-secondary-container)] text-[var(--md-sys-color-on-secondary-container)]'
@@ -280,6 +291,7 @@ export const MoleculeStudio: React.FC<MoleculeStudioProps> = ({
             type="button"
             onClick={() => setShowShortcuts(v => !v)}
             title="Ver atalhos rápidos [K]"
+            style={{ pointerEvents: 'auto', cursor: 'pointer' }}
             className={`h-7 px-2.5 rounded-full flex items-center gap-1.5 text-xs font-semibold transition-colors cursor-pointer ${
               showShortcuts
                 ? 'bg-[var(--md-sys-color-secondary-container)] text-[var(--md-sys-color-on-secondary-container)]'
@@ -291,70 +303,77 @@ export const MoleculeStudio: React.FC<MoleculeStudioProps> = ({
             <kbd className="text-[10px] font-mono opacity-60">K</kbd>
           </button>
         </div>
-      )}
 
-      {/* Floating top toolbar (Centered bubble) */}
-      <div
-        className="studio-fade fixed top-3 left-1/2 -translate-x-1/2 z-30 pointer-events-none"
-        data-hidden={!showToolbar}
-      >
-        <FloatingToolbar
-          state={canvasState}
-          onSelectTool={tool => canvasRef.current?.setTool(tool)}
-          onSelectElement={element => canvasRef.current?.setElement(element)}
-          onSelectGroup={group => canvasRef.current?.setGroup(group)}
-          onSelectRing={ring => canvasRef.current?.setRing(ring)}
-          onAutoAlign={() => canvasRef.current?.autoAlign()}
-          onUndo={() => canvasRef.current?.undo()}
-          onRedo={() => canvasRef.current?.redo()}
-          onRecenter={() => canvasRef.current?.recenter()}
-          onClear={() => canvasRef.current?.clear()}
-          onHide={() => setShowToolbar(false)}
-        />
-      </div>
-
-      {/* Top Right Floating Controls (Zen, Fullscreen, Exit) */}
-      <div className="studio-floating fixed top-3 right-4 z-40 h-10 px-2 rounded-full flex items-center gap-1 shadow-lg">
-        <button
-          type="button"
-          onClick={toggleZenMode}
-          title={isZenMode ? 'Restaurar painéis [H]' : 'Ocultar tudo / Modo Zen [H]'}
-          aria-label={isZenMode ? 'Restaurar painéis' : 'Ocultar tudo'}
-          className="h-7 px-2.5 rounded-full flex items-center gap-1.5 text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-highest)] transition-colors cursor-pointer"
+        {/* Center Island: FloatingToolbar */}
+        <div
+          className="studio-fade pointer-events-auto"
+          style={{ pointerEvents: showToolbar ? 'auto' : 'none' }}
+          data-hidden={!showToolbar}
         >
-          {isZenMode ? (
-            <Eye className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
-          ) : (
-            <EyeOff className="w-3.5 h-3.5" />
-          )}
-          <span className="hidden md:inline">{isZenMode ? 'Mostrar' : 'Ocultar tudo'}</span>
-          <kbd className="text-[10px] font-mono opacity-60">H</kbd>
-        </button>
+          <FloatingToolbar
+            state={canvasState}
+            onSelectTool={tool => canvasRef.current?.setTool(tool)}
+            onSelectElement={element => canvasRef.current?.setElement(element)}
+            onSelectGroup={group => canvasRef.current?.setGroup(group)}
+            onSelectRing={ring => canvasRef.current?.setRing(ring)}
+            onAutoAlign={() => canvasRef.current?.autoAlign()}
+            onUndo={() => canvasRef.current?.undo()}
+            onRedo={() => canvasRef.current?.redo()}
+            onRecenter={() => canvasRef.current?.recenter()}
+            onClear={() => canvasRef.current?.clear()}
+            onHide={() => setShowToolbar(false)}
+          />
+        </div>
 
-        <button
-          type="button"
-          onClick={toggleFullscreen}
-          title={isFullscreen ? 'Sair da tela cheia [F]' : 'Tela cheia [F]'}
-          aria-label="Alternar tela cheia"
-          className="h-7 px-2.5 rounded-full flex items-center gap-1.5 text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-highest)] transition-colors cursor-pointer"
+        {/* Right Island: Zen, Fullscreen, Sair */}
+        <div
+          className="studio-floating h-10 px-2 rounded-full flex items-center gap-1 shadow-lg pointer-events-auto"
+          style={{ pointerEvents: 'auto' }}
         >
-          {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-          <span className="hidden md:inline">{isFullscreen ? 'Janela' : 'Tela cheia'}</span>
-          <kbd className="text-[10px] font-mono opacity-60">F</kbd>
-        </button>
-
-        {onExit && (
           <button
             type="button"
-            onClick={onExit}
-            title="Sair do laboratório [Esc]"
-            aria-label="Sair"
-            className="h-7 px-2 rounded-full flex items-center justify-center text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-error)] hover:bg-[var(--md-sys-color-surface-container-highest)] transition-colors cursor-pointer"
+            onClick={toggleZenMode}
+            title={isZenMode ? 'Restaurar painéis [H]' : 'Ocultar tudo / Modo Zen [H]'}
+            aria-label={isZenMode ? 'Restaurar painéis' : 'Ocultar tudo'}
+            style={{ pointerEvents: 'auto', cursor: 'pointer' }}
+            className="h-7 px-2.5 rounded-full flex items-center gap-1.5 text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-highest)] transition-colors cursor-pointer"
           >
-            <X className="w-4 h-4" />
+            {isZenMode ? (
+              <Eye className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
+            ) : (
+              <EyeOff className="w-3.5 h-3.5" />
+            )}
+            <span className="hidden md:inline">{isZenMode ? 'Mostrar' : 'Ocultar tudo'}</span>
+            <kbd className="text-[10px] font-mono opacity-60">H</kbd>
           </button>
-        )}
-      </div>
+
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            title={isFullscreen ? 'Sair da tela cheia [F]' : 'Tela cheia [F]'}
+            aria-label="Alternar tela cheia"
+            style={{ pointerEvents: 'auto', cursor: 'pointer' }}
+            className="h-7 px-2.5 rounded-full flex items-center gap-1.5 text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-highest)] transition-colors cursor-pointer"
+          >
+            {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+            <span className="hidden md:inline">{isFullscreen ? 'Janela' : 'Tela cheia'}</span>
+            <kbd className="text-[10px] font-mono opacity-60">F</kbd>
+          </button>
+
+          {onExit && (
+            <button
+              type="button"
+              onClick={onExit}
+              title="Sair do laboratório [Esc]"
+              aria-label="Sair"
+              style={{ pointerEvents: 'auto', cursor: 'pointer' }}
+              className="h-7 px-2 rounded-full flex items-center justify-center text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-error)] hover:bg-[var(--md-sys-color-surface-container-highest)] transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </header>
 
       {/* Nomenclature / Analysis Floating Island (Left) */}
       {showName && (
@@ -378,12 +397,16 @@ export const MoleculeStudio: React.FC<MoleculeStudioProps> = ({
       {showShortcuts && <ShortcutsPanel onHide={() => setShowShortcuts(false)} />}
 
       {/* Restore Dock — Bottom Left for individually dismissed panels */}
-      <div className="fixed bottom-4 left-4 z-30 flex items-center gap-2 flex-wrap max-w-[80vw]">
+      <div
+        className="fixed bottom-4 left-4 z-40 flex items-center gap-2 flex-wrap max-w-[80vw]"
+        style={{ pointerEvents: 'auto' }}
+      >
         {isZenMode ? (
           <button
             type="button"
             onClick={toggleZenMode}
             title="Restaurar painéis [H]"
+            style={{ pointerEvents: 'auto', cursor: 'pointer' }}
             className="studio-floating h-9 px-3.5 rounded-full flex items-center gap-2 text-xs font-semibold text-[var(--md-sys-color-primary)] hover:bg-[var(--md-sys-color-surface-container-highest)] shadow-lg transition-colors cursor-pointer animate-fadeIn"
           >
             <Eye className="w-4 h-4" />
@@ -399,6 +422,7 @@ export const MoleculeStudio: React.FC<MoleculeStudioProps> = ({
                 type="button"
                 onClick={onClick}
                 title={title}
+                style={{ pointerEvents: 'auto', cursor: 'pointer' }}
                 className="studio-floating h-8 px-3 rounded-full flex items-center gap-1.5 text-[11px] font-semibold text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-highest)] shadow-md transition-colors cursor-pointer"
               >
                 <Icon className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
