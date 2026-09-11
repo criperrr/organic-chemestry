@@ -60,6 +60,9 @@ export const KeyboardShortcuts: React.FC = () => {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Laboratory (sandbox) has its own keyboard engine for drawing tools & panels
+      if (activeTab === 'sandbox') return;
+
       const target = e.target as HTMLElement | null;
       const isInputFocused =
         target?.tagName === 'INPUT' ||

@@ -19,6 +19,7 @@ export {
   buildSubstituentGroup,
   generateUniqueId,
   getGraphBounds,
+  autoAlignMolecularGraph,
 } from './geometry.js';
 export {
   recalculateAllValences,

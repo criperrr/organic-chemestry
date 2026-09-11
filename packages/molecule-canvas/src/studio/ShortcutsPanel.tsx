@@ -12,6 +12,7 @@ const SECTIONS: { title: string; rows: [string, string][] }[] = [
       ['A', 'Anéis e aromáticos'],
       ['X', 'Borracha'],
       ['V', 'Mover / navegar'],
+      ['O', 'Auto-alinhar e organizar'],
     ],
   },
   {
@@ -21,7 +22,9 @@ const SECTIONS: { title: string; rows: [string, string][] }[] = [
       ['I', 'Nomenclatura'],
       ['L', 'Esqueletos prontos'],
       ['K', 'Este painel'],
-      ['H', 'Esconder tudo'],
+      ['H', 'Ocultar tudo (Modo Zen)'],
+      ['F', 'Tela cheia'],
+      ['1 / Esc', 'Voltar ao Treino'],
     ],
   },
   {
@@ -38,10 +41,10 @@ const SECTIONS: { title: string; rows: [string, string][] }[] = [
 
 export const ShortcutsPanel: React.FC<{ onHide: () => void }> = ({ onHide }) => (
   <Balloon
-    title="Atalhos"
+    title="Atalhos do Teclado"
     icon={<Keyboard className="w-4 h-4" />}
-    initialPosition={{ top: 88, left: 16 }}
-    width={280}
+    initialPosition={{ top: 72, right: 16 }}
+    width={290}
     onHide={onHide}
     hideKey="K"
   >

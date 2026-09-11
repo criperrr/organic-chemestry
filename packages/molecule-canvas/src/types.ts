@@ -90,6 +90,7 @@ export interface SkeletalCanvasState {
   ring: RingTemplateType;
   canUndo: boolean;
   canRedo: boolean;
+  canAutoAlign?: boolean;
   zoom: number;
   atomCount: number;
   bondCount: number;
@@ -104,6 +105,7 @@ export interface SkeletalCanvasHandle {
   setRing: (ring: RingTemplateType) => void;
   undo: () => void;
   redo: () => void;
+  autoAlign: () => void;
   clear: () => void;
   recenter: () => void;
   zoomBy: (factor: number) => void;

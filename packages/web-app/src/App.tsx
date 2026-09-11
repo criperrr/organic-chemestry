@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { NavigationRail, TelemetryRail, MobileTopBar, MobileControlSheet } from './components/HUD.js';
 import { MobileTabBar } from './components/MobileTabBar.js';
 import { useTabGestures } from './hooks/useTabGestures.js';
@@ -6,7 +6,6 @@ import { SpeedrunnerInput } from './components/SpeedrunnerInput.js';
 import { SlotBuilder } from './components/SlotBuilder.js';
 import { FeedbackCard } from './components/FeedbackCard.js';
 import { TheoryHub } from './components/TheoryHub.js';
-import { SandboxHub } from './components/SandboxHub.js';
 import { FunctionHunt } from './components/FunctionHunt.js';
 import { MomentumBar } from './components/MomentumBar.js';
 import { KeyboardShortcuts } from './components/KeyboardShortcuts.js';
@@ -16,6 +15,8 @@ import { MoleculeZoomModal } from './components/MoleculeZoomModal.js';
 import { StudioOverlay } from './components/StudioOverlay.js';
 import { FluidMolecule } from './components/FluidMolecule.js';
 import { soundSynth } from '@quimicarush/gamification-engine';
+import { MoleculeStudio } from '@quimicarush/molecule-canvas';
+import type { MolecularGraphAnalysis } from '@quimicarush/chemistry-core';
 import { useGameStore } from './stores/useGameStore.js';
 import {
   Sparkles,
@@ -30,6 +31,8 @@ export const App: React.FC = () => {
     currentMolecule,
     initSession,
     activeTab,
+    setActiveTab,
+    setCurrentMolecule,
     inputMode,
     isAnswerSubmitted,
     currentEvaluation,
@@ -40,6 +43,25 @@ export const App: React.FC = () => {
     toggleFullscreen,
     isGoldenMolecule,
   } = useGameStore();
+
+  const handleSendToArcadeFromStudio = useCallback(
+    (analysis: MolecularGraphAnalysis) => {
+      setCurrentMolecule({
+        id: `studio-${Date.now()}`,
+        smiles: analysis.smiles,
+        iupacName: analysis.iupacName2013,
+        commonNames: [],
+        primaryFunction: analysis.primaryFunction,
+        secondaryFunctions: analysis.secondaryFunctions,
+        difficulty: 'avancado',
+        formula: analysis.formula,
+        realWorldStory: 'Molécula desenhada por você no Laboratório.',
+        educationalContext: 'Construção livre no canvas esquelético.',
+      });
+      setActiveTab('arcade');
+    },
+    [setCurrentMolecule, setActiveTab]
+  );
 
   // Synchronize browser native fullscreen change events with store state
   useEffect(() => {
@@ -59,9 +81,8 @@ export const App: React.FC = () => {
   }, []);
 
   // Horizontal swipe (phone) and two-finger horizontal swipe (trackpad) move
-  // between tabs, so neither input needs to aim at a control. Disabled in focus
-  // mode, where there is only one surface to be on.
-  useTabGestures(!isFullscreen);
+  // between tabs. Disabled in focus mode or while drawing in the laboratory canvas.
+  useTabGestures(!isFullscreen && activeTab !== 'sandbox');
 
   useEffect(() => {
     initSession();
@@ -81,6 +102,19 @@ export const App: React.FC = () => {
       window.removeEventListener('keydown', handleFirstInteraction);
     };
   }, [initSession]);
+
+  // Laboratório Sandbox — dedicated, full-bleed standalone page like Excalidraw
+  if (activeTab === 'sandbox') {
+    return (
+      <div className="fixed inset-0 w-screen h-[100dvh] overflow-hidden bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] select-none">
+        <MoleculeStudio
+          onExit={() => setActiveTab('arcade')}
+          onNavigateTab={tab => setActiveTab(tab)}
+          onSendToArcade={handleSendToArcadeFromStudio}
+        />
+      </div>
+    );
+  }
 
   return (
     <div
@@ -137,10 +171,6 @@ export const App: React.FC = () => {
           ) : activeTab === 'theory' ? (
             <div className="w-full max-w-4xl mx-auto">
               <TheoryHub />
-            </div>
-          ) : activeTab === 'sandbox' ? (
-            <div className="w-full max-w-5xl mx-auto">
-              <SandboxHub />
             </div>
           ) : (
             <div

@@ -18,6 +18,20 @@ export interface NamePanelProps {
 /**
  * The live readout: what the structure on the canvas is called, and why.
  */
+const FormulaText: React.FC<{ formula: string }> = ({ formula }) => (
+  <>
+    {formula.split(/(\d+)/).map((part, i) =>
+      /^\d+$/.test(part) ? (
+        <sub key={i} className="text-[0.75em] leading-none align-baseline relative -bottom-[0.15em]">
+          {part}
+        </sub>
+      ) : (
+        <span key={i}>{part}</span>
+      )
+    )}
+  </>
+);
+
 export const NamePanel: React.FC<NamePanelProps> = ({ analysis, onHide, onSendToArcade }) => {
   const [copied, setCopied] = useState<string | null>(null);
   const [showSteps, setShowSteps] = useState(false);
@@ -36,9 +50,10 @@ export const NamePanel: React.FC<NamePanelProps> = ({ analysis, onHide, onSendTo
 
   return (
     <Balloon
-      title="Nomenclatura"
+      title="Nomenclatura IUPAC"
       icon={<Tag className="w-4 h-4" />}
-      initialPosition={{ top: 88, right: 16 }}
+      initialPosition={{ top: 72, left: 16 }}
+      width={340}
       onHide={onHide}
       hideKey="I"
     >
@@ -79,8 +94,8 @@ export const NamePanel: React.FC<NamePanelProps> = ({ analysis, onHide, onSendTo
           )}
 
           <div className="flex items-center gap-1.5 flex-wrap text-[11px] font-mono">
-            <span className="m3-chip py-0.5 px-2">
-              <strong>{analysis.formula}</strong>
+            <span className="m3-chip py-0.5 px-2 font-bold">
+              <FormulaText formula={analysis.formula} />
             </span>
             <button
               type="button"
@@ -153,10 +168,10 @@ export const NamePanel: React.FC<NamePanelProps> = ({ analysis, onHide, onSendTo
             <button
               type="button"
               onClick={onSendToArcade}
-              className="m3-chip py-1.5 px-3 text-[11px] font-bold gap-1.5 bg-[var(--md-sys-color-secondary-container)] text-[var(--md-sys-color-on-secondary-container)] self-start"
+              className="w-full mt-2 py-2 px-3.5 rounded-full text-xs font-bold gap-2 bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)] shadow-sm hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center cursor-pointer"
             >
               <Send className="w-3.5 h-3.5" />
-              Treinar esta molécula no Arcade
+              <span>Treinar esta molécula no Treino [1]</span>
             </button>
           )}
         </>

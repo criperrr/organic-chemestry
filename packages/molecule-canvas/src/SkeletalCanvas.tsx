@@ -57,6 +57,8 @@ import {
   buildSubstituentGroup,
   generateUniqueId,
   getGraphBounds,
+  autoAlignMolecularGraph,
+  RING_SPECS,
 } from './geometry.js';
 import {
   recalculateAllValences,
@@ -358,6 +360,15 @@ SkeletalCanvas(
     return () => svg.removeEventListener('wheel', onWheel);
   }, [zoomAtPoint]);
 
+  const handleAutoAlign = useCallback(() => {
+    if (readOnly || currentGraph.atoms.length <= 1) return;
+    soundSynth.playSnap();
+    haptics.success();
+    const aligned = autoAlignMolecularGraph(currentGraph);
+    commitGraph(aligned);
+    handleRecenter();
+  }, [readOnly, currentGraph, commitGraph, handleRecenter]);
+
   // ------------------------------------------------------------------------
   // Host integration: imperative handle + state mirror
   //
@@ -374,6 +385,7 @@ SkeletalCanvas(
       setRing: (ringTemplate) => setSelectedRing(ringTemplate),
       undo: handleUndo,
       redo: handleRedo,
+      autoAlign: handleAutoAlign,
       clear: handleClear,
       recenter: handleRecenter,
       zoomBy: (factor) => {
@@ -385,7 +397,7 @@ SkeletalCanvas(
       resetZoom: () => setTransform({ zoom: 1, panX: 0, panY: 0 }),
       loadGraph: (graph) => commitGraph(graph, false),
     }),
-    [handleUndo, handleRedo, handleClear, handleRecenter, zoomAtPoint, commitGraph]
+    [handleUndo, handleRedo, handleAutoAlign, handleClear, handleRecenter, zoomAtPoint, commitGraph]
   );
 
   const editorState: SkeletalCanvasState = useMemo(
@@ -396,6 +408,7 @@ SkeletalCanvas(
       ring: selectedRing,
       canUndo: historyIndex > 0,
       canRedo: historyIndex < history.length - 1,
+      canAutoAlign: currentGraph.atoms.length > 1,
       zoom: transform.zoom,
       atomCount: currentGraph.atoms.length,
       bondCount: currentGraph.bonds.length,
@@ -532,21 +545,15 @@ SkeletalCanvas(
         if (!anchor) return;
 
         const angle = findBestAttachmentAngle(anchorAtomId, currentGraph);
-        const ringDist = BOND_LENGTH + BOND_LENGTH;
+        const spec = RING_SPECS[ringType] ?? RING_SPECS.cyclohexane;
+        const sides = spec.sides;
+        const radius = BOND_LENGTH / (2 * Math.sin(Math.PI / sides));
+        const ringDist = radius + BOND_LENGTH;
         const centerX = anchor.x + ringDist * Math.cos(angle);
         const centerY = anchor.y + ringDist * Math.sin(angle);
 
-        const ring = createRingTemplate(ringType, { x: centerX, y: centerY }, BOND_LENGTH);
-        // Find nearest ring atom to anchor
-        let closestAtom = ring.atoms[0]!;
-        let minDSq = Infinity;
-        for (const rAtom of ring.atoms) {
-          const dSq = (rAtom.x - anchor.x) ** 2 + (rAtom.y - anchor.y) ** 2;
-          if (dSq < minDSq) {
-            minDSq = dSq;
-            closestAtom = rAtom;
-          }
-        }
+        const ring = createRingTemplate(ringType, { x: centerX, y: centerY }, BOND_LENGTH, angle + Math.PI);
+        const closestAtom = ring.atoms[0]!;
 
         const connectBond: BondEdge = {
           id: generateUniqueId('b'),
@@ -971,26 +978,20 @@ SkeletalCanvas(
       const hoveredAtom = hoveredAtomId ? atomMap.get(hoveredAtomId) : undefined;
       if (hoveredAtom) {
         const angle = findBestAttachmentAngle(hoveredAtom.id, currentGraph);
-        const ringDist = BOND_LENGTH * 2;
+        const spec = RING_SPECS[selectedRing] ?? RING_SPECS.cyclohexane;
+        const sides = spec.sides;
+        const radius = BOND_LENGTH / (2 * Math.sin(Math.PI / sides));
+        const ringDist = radius + BOND_LENGTH;
+        const centerX = hoveredAtom.x + ringDist * Math.cos(angle);
+        const centerY = hoveredAtom.y + ringDist * Math.sin(angle);
         const ring = createRingTemplate(
           selectedRing,
-          {
-            x: hoveredAtom.x + ringDist * Math.cos(angle),
-            y: hoveredAtom.y + ringDist * Math.sin(angle),
-          },
-          BOND_LENGTH
+          { x: centerX, y: centerY },
+          BOND_LENGTH,
+          angle + Math.PI
         );
 
-        // Show the bond that will tie the ring to the atom, too.
-        let closest = ring.atoms[0]!;
-        let minDSq = Infinity;
-        for (const rAtom of ring.atoms) {
-          const dSq = (rAtom.x - hoveredAtom.x) ** 2 + (rAtom.y - hoveredAtom.y) ** 2;
-          if (dSq < minDSq) {
-            minDSq = dSq;
-            closest = rAtom;
-          }
-        }
+        const closest = ring.atoms[0]!;
         return {
           atoms: [hoveredAtom, ...ring.atoms],
           bonds: [

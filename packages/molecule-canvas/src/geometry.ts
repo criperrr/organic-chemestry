@@ -7,6 +7,7 @@ import type {
   RingTemplateType,
   FunctionalGroupType,
 } from './types.js';
+import { recalculateAllValences } from './valence.js';
 
 export const BOND_LENGTH = 44;
 export const SNAP_RADIUS = 16;
@@ -269,10 +270,12 @@ export const RING_SPECS: Record<
 export function createRingTemplate(
   type: RingTemplateType,
   center: { x: number; y: number },
-  bondLength: number = BOND_LENGTH
+  bondLength: number = BOND_LENGTH,
+  rotationAngle?: number
 ): { atoms: AtomNode[]; bonds: BondEdge[] } {
   const spec = RING_SPECS[type] ?? RING_SPECS.cyclohexane;
   const { sides, aromatic, initialAngle } = spec;
+  const startAngle = rotationAngle !== undefined ? rotationAngle : initialAngle;
   const doubleBonds = new Set(spec.doubleBonds ?? []);
 
   // Polygon circumradius R = L / (2 * sin(PI / sides))
@@ -281,7 +284,7 @@ export function createRingTemplate(
   const bonds: BondEdge[] = [];
 
   for (let i = 0; i < sides; i++) {
-    const angle = initialAngle + (i * 2 * Math.PI) / sides;
+    const angle = startAngle + (i * 2 * Math.PI) / sides;
     const element = spec.hetero?.[i] ?? 'C';
     atoms.push({
       id: generateUniqueId(element.toLowerCase()),
@@ -763,4 +766,317 @@ export function getGraphBounds(atoms: AtomNode[]): {
   const centerY = (minY + maxY) / 2;
 
   return { minX, minY, maxX, maxY, width, height, centerX, centerY };
+}
+
+/**
+ * Cycle perception to find simple rings (length 3 to 8).
+ */
+function findSimpleRings(atomIds: string[], adjMap: Map<string, string[]>): string[][] {
+  const rings: string[][] = [];
+  const cycleSignatures = new Set<string>();
+
+  function dfs(start: string, current: string, parent: string | null, path: string[]) {
+    if (path.length > 8) return;
+    const neighbors = adjMap.get(current) ?? [];
+    for (const nxt of neighbors) {
+      if (nxt === parent) continue;
+      if (nxt === start && path.length >= 3) {
+        const cycle = [...path];
+        const minVal = cycle.reduce((min, cur) => (cur < min ? cur : min), cycle[0]!);
+        const minIdx = cycle.indexOf(minVal);
+        const rotFwd = [...cycle.slice(minIdx), ...cycle.slice(0, minIdx)];
+        const rev = [...cycle].reverse();
+        const minRevIdx = rev.indexOf(minVal);
+        const rotRev = [...rev.slice(minRevIdx), ...rev.slice(0, minRevIdx)];
+        const sig = rotFwd.join('|') < rotRev.join('|') ? rotFwd.join('|') : rotRev.join('|');
+        if (!cycleSignatures.has(sig)) {
+          cycleSignatures.add(sig);
+          rings.push(cycle);
+        }
+        return;
+      }
+      if (!path.includes(nxt)) {
+        dfs(start, nxt, current, [...path, nxt]);
+      }
+    }
+  }
+
+  for (const a of atomIds) {
+    dfs(a, a, null, [a]);
+  }
+
+  return rings.sort((a, b) => a.length - b.length);
+}
+
+/**
+ * Finds the longest simple path in an acyclic component (graph diameter).
+ */
+function findLongestPath(atomIds: string[], adjMap: Map<string, string[]>): string[] {
+  if (atomIds.length === 0) return [];
+  if (atomIds.length === 1) return [atomIds[0]!];
+
+  function bfs(start: string): { farthest: string; parent: Map<string, string> } {
+    const queue = [start];
+    const dist = new Map<string, number>([[start, 0]]);
+    const parent = new Map<string, string>();
+    let farthest = start;
+    let maxD = 0;
+
+    while (queue.length > 0) {
+      const cur = queue.shift()!;
+      const d = dist.get(cur)!;
+      if (d > maxD) {
+        maxD = d;
+        farthest = cur;
+      }
+      for (const nxt of adjMap.get(cur) ?? []) {
+        if (!dist.has(nxt) && atomIds.includes(nxt)) {
+          dist.set(nxt, d + 1);
+          parent.set(nxt, cur);
+          queue.push(nxt);
+        }
+      }
+    }
+    return { farthest, parent };
+  }
+
+  const { farthest: u } = bfs(atomIds[0]!);
+  const { farthest: v, parent } = bfs(u);
+
+  const path: string[] = [];
+  let curr: string | undefined = v;
+  while (curr) {
+    path.push(curr);
+    curr = parent.get(curr);
+  }
+  return path;
+}
+
+function layoutChain(
+  currId: string,
+  prevId: string,
+  baseAngle: number,
+  adj: Map<string, string[]>,
+  positions: Map<string, { x: number; y: number }>
+) {
+  const prevPos = positions.get(prevId)!;
+  const x = prevPos.x + BOND_LENGTH * Math.cos(baseAngle);
+  const y = prevPos.y + BOND_LENGTH * Math.sin(baseAngle);
+  positions.set(currId, { x, y });
+
+  const nextNeighbors = (adj.get(currId) ?? []).filter(
+    id => id !== prevId && !positions.has(id)
+  );
+
+  if (nextNeighbors.length === 1) {
+    const bend = Math.PI / 3;
+    const nextAngle = baseAngle + bend;
+    layoutChain(nextNeighbors[0]!, currId, nextAngle, adj, positions);
+  } else if (nextNeighbors.length > 1) {
+    const spread = Math.PI / 3;
+    nextNeighbors.forEach((nbrId, idx) => {
+      const nextAngle = baseAngle + (idx === 0 ? -spread : spread);
+      layoutChain(nbrId, currId, nextAngle, adj, positions);
+    });
+  }
+}
+
+function runRelaxation(
+  atoms: AtomNode[],
+  bonds: BondEdge[],
+  positions: Map<string, { x: number; y: number }>,
+  pinned: Set<string>
+) {
+  const iterations = 50;
+  for (let it = 0; it < iterations; it++) {
+    const forces = new Map<string, { fx: number; fy: number }>();
+    for (const a of atoms) forces.set(a.id, { fx: 0, fy: 0 });
+
+    for (const b of bonds) {
+      const p1 = positions.get(b.source);
+      const p2 = positions.get(b.target);
+      if (!p1 || !p2) continue;
+      const dx = p2.x - p1.x;
+      const dy = p2.y - p1.y;
+      const d = Math.sqrt(dx * dx + dy * dy) || 1;
+      const diff = d - BOND_LENGTH;
+      const f = 0.25 * diff;
+      const fx = (dx / d) * f;
+      const fy = (dy / d) * f;
+
+      if (!pinned.has(b.source)) {
+        const f1 = forces.get(b.source)!;
+        f1.fx += fx;
+        f1.fy += fy;
+      }
+      if (!pinned.has(b.target)) {
+        const f2 = forces.get(b.target)!;
+        f2.fx -= fx;
+        f2.fy -= fy;
+      }
+    }
+
+    for (let i = 0; i < atoms.length; i++) {
+      const id1 = atoms[i]!.id;
+      const p1 = positions.get(id1);
+      if (!p1) continue;
+      for (let j = i + 1; j < atoms.length; j++) {
+        const id2 = atoms[j]!.id;
+        const p2 = positions.get(id2);
+        if (!p2) continue;
+
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const d2 = dx * dx + dy * dy || 1;
+        if (d2 < (BOND_LENGTH * 2.2) ** 2) {
+          const rep = Math.min(15, 600 / d2);
+          const d = Math.sqrt(d2);
+          const rx = (dx / d) * rep;
+          const ry = (dy / d) * rep;
+
+          if (!pinned.has(id1)) {
+            const f1 = forces.get(id1)!;
+            f1.fx -= rx;
+            f1.fy -= ry;
+          }
+          if (!pinned.has(id2)) {
+            const f2 = forces.get(id2)!;
+            f2.fx += rx;
+            f2.fy += ry;
+          }
+        }
+      }
+    }
+
+    const damp = (1 - it / iterations) * 0.4;
+    for (const a of atoms) {
+      if (pinned.has(a.id)) continue;
+      const f = forces.get(a.id)!;
+      const p = positions.get(a.id)!;
+      p.x += Math.max(-12, Math.min(12, f.fx * damp));
+      p.y += Math.max(-12, Math.min(12, f.fy * damp));
+    }
+  }
+}
+
+/**
+ * Automatically cleans, straightens, and aligns a molecular graph in 2D.
+ */
+export function autoAlignMolecularGraph(graph: MolecularGraphData): MolecularGraphData {
+  if (!graph.atoms || graph.atoms.length <= 1) return graph;
+
+  const atoms = graph.atoms;
+  const bonds = graph.bonds;
+
+  const adj = new Map<string, string[]>();
+  for (const a of atoms) adj.set(a.id, []);
+  for (const b of bonds) {
+    adj.get(b.source)?.push(b.target);
+    adj.get(b.target)?.push(b.source);
+  }
+
+  const bounds = getGraphBounds(atoms);
+  const targetCenterX = bounds.centerX;
+  const targetCenterY = bounds.centerY;
+
+  const rings = findSimpleRings(atoms.map(a => a.id), adj);
+  const newPositions = new Map<string, { x: number; y: number }>();
+
+  if (rings.length > 0) {
+    const ring = rings[0]!;
+    const sides = ring.length;
+    const radius = BOND_LENGTH / (2 * Math.sin(Math.PI / sides));
+    const initialAngle = sides === 6 ? -Math.PI / 6 : sides === 4 ? -Math.PI / 4 : -Math.PI / 2;
+
+    for (let i = 0; i < sides; i++) {
+      const angle = initialAngle + (i * 2 * Math.PI) / sides;
+      newPositions.set(ring[i]!, {
+        x: targetCenterX + radius * Math.cos(angle),
+        y: targetCenterY + radius * Math.sin(angle),
+      });
+    }
+
+    for (let i = 0; i < sides; i++) {
+      const ringAtomId = ring[i]!;
+      const rPos = newPositions.get(ringAtomId)!;
+      const outwardAngle = Math.atan2(rPos.y - targetCenterY, rPos.x - targetCenterX);
+
+      const unplacedNeighbors = (adj.get(ringAtomId) ?? []).filter(
+        id => !ring.includes(id) && !newPositions.has(id)
+      );
+
+      if (unplacedNeighbors.length === 1) {
+        layoutChain(unplacedNeighbors[0]!, ringAtomId, outwardAngle, adj, newPositions);
+      } else if (unplacedNeighbors.length > 1) {
+        const span = Math.PI / 3;
+        unplacedNeighbors.forEach((nbrId, idx) => {
+          const subAngle = outwardAngle + (idx === 0 ? -span / 2 : span / 2);
+          layoutChain(nbrId, ringAtomId, subAngle, adj, newPositions);
+        });
+      }
+    }
+  } else {
+    const longestPath = findLongestPath(atoms.map(a => a.id), adj);
+    const m = longestPath.length;
+    const dx = BOND_LENGTH * Math.cos(Math.PI / 6);
+    const dy = BOND_LENGTH * Math.sin(Math.PI / 6);
+
+    const startX = targetCenterX - ((m - 1) * dx) / 2;
+    const startY = targetCenterY;
+
+    for (let i = 0; i < m; i++) {
+      const atomId = longestPath[i]!;
+      const x = startX + i * dx;
+      const y = startY + (i % 2 === 0 ? 0 : -dy);
+      newPositions.set(atomId, { x, y });
+    }
+
+    for (let i = 0; i < m; i++) {
+      const backboneId = longestPath[i]!;
+      const isPeak = i % 2 !== 0;
+      const outwardAngle = isPeak ? -Math.PI / 2 : Math.PI / 2;
+
+      const unplacedNeighbors = (adj.get(backboneId) ?? []).filter(
+        id => !newPositions.has(id)
+      );
+
+      if (unplacedNeighbors.length === 1) {
+        layoutChain(unplacedNeighbors[0]!, backboneId, outwardAngle, adj, newPositions);
+      } else if (unplacedNeighbors.length > 1) {
+        unplacedNeighbors.forEach((nbrId, idx) => {
+          const subAngle = idx === 0 ? -Math.PI / 2 : Math.PI / 2;
+          layoutChain(nbrId, backboneId, subAngle, adj, newPositions);
+        });
+      }
+    }
+  }
+
+  for (const a of atoms) {
+    if (!newPositions.has(a.id)) {
+      newPositions.set(a.id, { x: a.x, y: a.y });
+    }
+  }
+
+  const pinnedIds = new Set(rings.length > 0 ? rings[0] : []);
+  runRelaxation(atoms, bonds, newPositions, pinnedIds);
+
+  const alignedBounds = getGraphBounds(
+    atoms.map(a => {
+      const p = newPositions.get(a.id) ?? { x: a.x, y: a.y };
+      return { ...a, x: p.x, y: p.y };
+    })
+  );
+  const shiftX = targetCenterX - alignedBounds.centerX;
+  const shiftY = targetCenterY - alignedBounds.centerY;
+
+  const finalAtoms = atoms.map(a => {
+    const p = newPositions.get(a.id) ?? { x: a.x, y: a.y };
+    return {
+      ...a,
+      x: Math.round(p.x + shiftX),
+      y: Math.round(p.y + shiftY),
+    };
+  });
+
+  return recalculateAllValences({ atoms: finalAtoms, bonds });
 }

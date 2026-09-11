@@ -113,6 +113,27 @@ const STARTERS: { label: string; hint: string; build: () => MolecularGraphData }
       });
     },
   },
+  {
+    label: 'Ciclo-hexano',
+    hint: 'anel cíclico de 6 carbonos',
+    build: () => {
+      const ring = createRingTemplate('cyclohexane', { x: 0, y: 0 }, BOND_LENGTH);
+      return recalculateAllValences({ atoms: ring.atoms, bonds: ring.bonds });
+    },
+  },
+  {
+    label: 'Acetona',
+    hint: 'propanona (cetona)',
+    build: () => {
+      const chain = buildChain(3);
+      const c2 = chain.atoms[1]!;
+      const fragment = buildSubstituentGroup('=O', c2, -Math.PI / 2, BOND_LENGTH);
+      return recalculateAllValences({
+        atoms: [...chain.atoms, ...fragment.atoms],
+        bonds: [...chain.bonds, ...fragment.bonds],
+      });
+    },
+  },
 ];
 
 export interface StartersPanelProps {
@@ -130,8 +151,8 @@ export const StartersPanel: React.FC<StartersPanelProps> = ({ onLoad, onHide }) 
   <Balloon
     title="Esqueletos prontos"
     icon={<Library className="w-4 h-4" />}
-    initialPosition={{ top: 88, left: 16 }}
-    width={300}
+    initialPosition={{ top: 72, left: 376 }}
+    width={320}
     onHide={onHide}
     hideKey="L"
   >

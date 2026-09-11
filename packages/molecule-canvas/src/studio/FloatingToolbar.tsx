@@ -11,6 +11,7 @@ import {
   Crosshair,
   Trash2,
   X,
+  Wand2,
 } from 'lucide-react';
 import type {
   CanvasTool,
@@ -38,6 +39,7 @@ export interface FloatingToolbarProps {
   onSelectElement: (element: AtomElement) => void;
   onSelectGroup: (group: FunctionalGroupType) => void;
   onSelectRing: (ring: RingTemplateType) => void;
+  onAutoAlign?: () => void;
   onUndo: () => void;
   onRedo: () => void;
   onRecenter: () => void;
@@ -59,6 +61,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
   onSelectElement,
   onSelectGroup,
   onSelectRing,
+  onAutoAlign,
   onUndo,
   onRedo,
   onRecenter,
@@ -133,6 +136,21 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
             <span className="hidden md:inline">{label}</span>
           </button>
         ))}
+
+        <span className="w-px h-6 mx-1 bg-[var(--md-sys-color-outline-variant)] shrink-0" />
+
+        {onAutoAlign && (
+          <button
+            type="button"
+            onClick={onAutoAlign}
+            disabled={!state?.canAutoAlign}
+            title="Auto-organizar e alinhar molécula [O]"
+            className="h-9 px-3 rounded-full flex items-center gap-1.5 text-[13px] font-semibold shrink-0 transition-colors text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-highest)] hover:text-[var(--md-sys-color-primary)] disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+          >
+            <Wand2 className="w-4 h-4 shrink-0 text-[var(--md-sys-color-tertiary)]" />
+            <span className="hidden lg:inline">Alinhar</span>
+          </button>
+        )}
 
         <span className="w-px h-6 mx-1 bg-[var(--md-sys-color-outline-variant)] shrink-0" />
 
