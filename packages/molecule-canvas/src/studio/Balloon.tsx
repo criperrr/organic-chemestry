@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { GripHorizontal, X, ChevronDown } from 'lucide-react';
 
 export interface BalloonProps {
@@ -13,6 +13,27 @@ export interface BalloonProps {
   defaultCollapsed?: boolean;
   children: React.ReactNode;
 }
+
+/**
+ * The balloon pressed (or opened) last paints above the others, like a focused
+ * window. Without it, a panel dragged under another could never be reached.
+ */
+let frontBalloon: symbol | null = null;
+const frontListeners = new Set<() => void>();
+const frontStore = {
+  subscribe(listener: () => void) {
+    frontListeners.add(listener);
+    return () => {
+      frontListeners.delete(listener);
+    };
+  },
+  get: () => frontBalloon,
+  bringToFront(id: symbol) {
+    if (frontBalloon === id) return;
+    frontBalloon = id;
+    frontListeners.forEach(listener => listener());
+  },
+};
 
 /**
  * A floating panel over the drawing surface.
@@ -34,6 +55,10 @@ export const Balloon: React.FC<BalloonProps> = ({
 }) => {
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
+  const [id] = useState(() => Symbol(title));
+  const isFront = useSyncExternalStore(frontStore.subscribe, frontStore.get) === id;
+  const bringToFront = useCallback(() => frontStore.bringToFront(id), [id]);
+  useEffect(bringToFront, [bringToFront]);
   const nodeRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{
     startX: number;
@@ -45,6 +70,9 @@ export const Balloon: React.FC<BalloonProps> = ({
   const handleDragStart = useCallback((event: React.PointerEvent) => {
     const node = nodeRef.current;
     if (!node) return;
+    // The collapse/close buttons live in the drag handle. Capturing the pointer
+    // there moves the balloon under a slightly shaky click and steals the click.
+    if ((event.target as Element).closest('button')) return;
     const rect = node.getBoundingClientRect();
     dragRef.current = {
       startX: event.clientX,
@@ -91,9 +119,11 @@ export const Balloon: React.FC<BalloonProps> = ({
         position: 'fixed',
         width: `min(${width}px, calc(100vw - 24px))`,
         ...placement,
-        pointerEvents: 'auto',
+        // Stays under the Studio header (z-50) and its palettes either way.
+        zIndex: isFront ? 41 : 40,
       }}
-      className="studio-floating rounded-3xl overflow-hidden pointer-events-auto z-40 shadow-xl"
+      onPointerDownCapture={bringToFront}
+      className="studio-floating rounded-3xl overflow-hidden shadow-xl"
     >
       <div
         onPointerDown={handleDragStart}
@@ -111,7 +141,6 @@ export const Balloon: React.FC<BalloonProps> = ({
             type="button"
             onClick={() => setCollapsed(value => !value)}
             title={collapsed ? 'Expandir' : 'Recolher'}
-            style={{ pointerEvents: 'auto', cursor: 'pointer' }}
             className="h-7 w-7 rounded-full flex items-center justify-center text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-highest)] transition-colors cursor-pointer"
           >
             <ChevronDown
@@ -122,7 +151,6 @@ export const Balloon: React.FC<BalloonProps> = ({
             type="button"
             onClick={onHide}
             title={hideKey ? `Ocultar painel [${hideKey}]` : 'Ocultar painel'}
-            style={{ pointerEvents: 'auto', cursor: 'pointer' }}
             className="h-7 w-7 rounded-full flex items-center justify-center text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-highest)] transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />

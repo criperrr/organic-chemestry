@@ -1,13 +1,14 @@
 import React from 'react';
-import { Zap, Crosshair, BookOpen, FlaskConical } from 'lucide-react';
+import { Zap, Crosshair, GitFork, BookOpen, FlaskConical } from 'lucide-react';
 import { useGameStore } from '../stores/useGameStore.js';
 import type { ActiveTab } from '../stores/useGameStore.js';
 
 const TABS: { id: ActiveTab; label: string; hint: string; Icon: typeof Zap }[] = [
   { id: 'arcade', label: 'Treino', hint: 'Treino de nomenclatura [1]', Icon: Zap },
   { id: 'cacar', label: 'Caçada', hint: 'Caça-Funções [2]', Icon: Crosshair },
-  { id: 'theory', label: 'Teoria', hint: 'Compêndio [3]', Icon: BookOpen },
-  { id: 'sandbox', label: 'Lab', hint: 'Laboratório [4]', Icon: FlaskConical },
+  { id: 'isomeria', label: 'Isomeria', hint: 'Praticar Isomeria [3]', Icon: GitFork },
+  { id: 'theory', label: 'Teoria', hint: 'Compêndio [4]', Icon: BookOpen },
+  { id: 'sandbox', label: 'Lab', hint: 'Laboratório [5]', Icon: FlaskConical },
 ];
 
 /**

@@ -48,6 +48,9 @@ const SUBORDINATED_FUNCTIONAL_RADICALS = [
   { radical: 'ciano', key: '' },
   { radical: 'metóxi', key: '' },
   { radical: 'etóxi', key: '' },
+  { radical: 'sulfanil', key: '' },
+  { radical: '(metilsulfanil)', key: '' },
+  { radical: 'sulfo', key: '' },
 ];
 
 const CHAIN_PREFIXES = [
@@ -77,6 +80,8 @@ const FUNCTION_SUFFIXES = [
   { suffix: 'ona', label: '-ona (Cetona)', key: 'K' },
   { suffix: 'oico', label: '-oico (Ácido Carboxílico)', key: 'C' },
   { suffix: 'oato', label: '-oato (Éster)', key: 'T' },
+  { suffix: 'tiol', label: '-tiol (Tiol)', key: '' },
+  { suffix: 'sulfônico', label: '-sulfônico (Ácido Sulfônico)', key: '' },
   { suffix: 'amina', label: '-amina (Amina)', key: 'N' },
   { suffix: 'amida', label: '-amida (Amida)', key: 'M' },
   { suffix: 'nitrila', label: '-nitrila (Nitrila)', key: 'U' },
@@ -162,26 +167,26 @@ export const SlotBuilder: React.FC = () => {
   return (
     <div className="w-full max-w-4xl mx-auto flex flex-col gap-4 m3-card p-3.5 sm:p-6">
       {/* Live Assembled Preview Bar (Anchored safely below mobile top bar) */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 sm:gap-3 p-3 sm:p-4 rounded-2xl bg-[var(--md-sys-color-surface-container-high)] border border-[var(--md-sys-color-outline-variant)] sticky top-13 lg:top-2 z-20 shadow-sm backdrop-blur-sm">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3 p-2.5 sm:p-4 rounded-2xl bg-[var(--md-sys-color-surface-container-high)] border border-[var(--md-sys-color-outline-variant)] sticky top-14 lg:top-2 z-20 shadow-sm backdrop-blur-sm">
         <div className="flex-1 min-w-0 w-full sm:w-auto">
           <div className="flex items-center gap-1.5 text-xs font-mono mb-0.5">
             <Sparkles className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)] shrink-0" />
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)]">
+            <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)]">
               Sequenciador IUPAC:
             </span>
           </div>
-          <div className="text-base sm:text-xl font-bold font-mono text-[var(--md-sys-color-primary)] truncate">
+          <div className="text-sm sm:text-xl font-bold font-mono text-[var(--md-sys-color-primary)] truncate">
             {assembledName || '(Selecione blocos abaixo)'}
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 sm:gap-2 self-stretch sm:self-center shrink-0 justify-end flex-wrap">
+        <div className="flex items-center gap-1 sm:gap-2 self-stretch sm:self-center shrink-0 justify-end flex-wrap">
           {/* Quick Cheatsheet Button (hidden on tiny screens, icon on mobile) */}
           <button
             type="button"
             onClick={toggleCheatsheet}
             title="Ver todos os atalhos de teclado (?)"
-            className="m3-chip text-xs py-1 px-2.5 sm:py-1.5 sm:px-3 flex items-center gap-1 min-h-[38px] active:scale-95"
+            className="m3-chip text-xs py-1 px-2 sm:py-1.5 sm:px-3 flex items-center gap-1 min-h-[40px] active:scale-95"
           >
             <Keyboard className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
             <span className="hidden sm:inline">Atalhos</span>
@@ -197,7 +202,7 @@ export const SlotBuilder: React.FC = () => {
                 popLastRadicalChip();
               }}
               title="Desfazer último radical adicionado (Backspace)"
-              className="m3-chip text-xs py-1 px-2.5 sm:py-1.5 sm:px-3 flex items-center gap-1 min-h-[38px] active:scale-95"
+              className="m3-chip text-xs py-1 px-2 sm:py-1.5 sm:px-3 flex items-center gap-1 min-h-[40px] active:scale-95"
             >
               <Undo2 className="w-3.5 h-3.5 text-[var(--md-sys-color-warning)]" />
               <span className="hidden sm:inline">Desfazer</span>
@@ -211,7 +216,7 @@ export const SlotBuilder: React.FC = () => {
             onClick={handleClear}
             disabled={isAnswerSubmitted}
             title="Limpar todos os blocos (Z)"
-            className="m3-chip text-xs py-1 px-2.5 sm:py-1.5 sm:px-3 flex items-center gap-1 min-h-[38px] active:scale-95"
+            className="m3-chip text-xs py-1 px-2 sm:py-1.5 sm:px-3 flex items-center gap-1 min-h-[40px] active:scale-95"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Limpar</span>
@@ -224,7 +229,7 @@ export const SlotBuilder: React.FC = () => {
             onClick={submitAnswer}
             disabled={isAnswerSubmitted || !assembledName.trim()}
             title="Submeter resposta (Enter)"
-            className="m3-button-filled text-xs sm:text-sm py-2 px-3.5 sm:px-4 font-bold flex items-center gap-1.5 disabled:opacity-40 min-h-[38px] active:scale-95"
+            className="m3-button-filled text-xs sm:text-sm py-2 px-3 sm:px-4 font-bold flex items-center gap-1.5 disabled:opacity-40 min-h-[40px] active:scale-95 cursor-pointer"
           >
             <span>Confirmar</span>
             <Send className="w-3.5 h-3.5" />

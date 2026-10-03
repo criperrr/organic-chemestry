@@ -126,13 +126,18 @@ export const KeyboardShortcuts: React.FC = () => {
         }
       }
 
-      // 4. Tab navigation: [1] Treino, [2] Caçada, [3] Compêndio, [4] Laboratório
-      if (!isInputFocused && !(activeTab === 'arcade' && inputMode === 'slotBuilder')) {
+      // 4. Tab navigation: [1] Treino, [2] Caçada, [3] Isomeria, [4] Compêndio, [5] Laboratório
+      if (
+        !isInputFocused &&
+        !(activeTab === 'arcade' && inputMode === 'slotBuilder') &&
+        activeTab !== 'isomeria'
+      ) {
         const tabByKey: Record<string, ActiveTab> = {
           '1': 'arcade',
           '2': 'cacar',
-          '3': 'theory',
-          '4': 'sandbox',
+          '3': 'isomeria',
+          '4': 'theory',
+          '5': 'sandbox',
         };
         const target = tabByKey[e.key];
         if (target) {
@@ -157,11 +162,11 @@ export const KeyboardShortcuts: React.FC = () => {
         return;
       }
 
-      // 7. 'V' or 'v': Cycle between Arcade, Theory, and Sandbox Hub (when not typing in an input)
-      if ((e.key === 'v' || e.key === 'V') && !isInputFocused && activeTab !== 'cacar') {
+      // 7. 'V' or 'v': Cycle between tabs (when not typing in an input)
+      if ((e.key === 'v' || e.key === 'V') && !isInputFocused && activeTab !== 'cacar' && activeTab !== 'isomeria') {
         e.preventDefault();
         playMechanicalKeySound();
-        const cycle: ActiveTab[] = ['arcade', 'cacar', 'theory', 'sandbox'];
+        const cycle: ActiveTab[] = ['arcade', 'cacar', 'isomeria', 'theory', 'sandbox'];
         const nextTab = cycle[(cycle.indexOf(activeTab) + 1) % cycle.length];
         setActiveTab(nextTab);
         return;

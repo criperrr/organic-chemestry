@@ -76,7 +76,7 @@ quimica-treino-organica/
 
 ## 3. Canonical Chemical Scope (Base `funcoes.pdf`)
 
-Every agent working on questions, parser logic, or theory must implement 100% of these 16 functions:
+Every agent working on questions, parser logic, or theory must implement 100% of these functions:
 1. **Hydrocarbons:** Alkanes (`-ano`), Alkenes (`-eno`), Alkynes (`-ino`), Alkadienes (`-dieno`), Cycloalkanes (`ciclo...ano`), Cycloalkenes (`ciclo...eno`), Aromatics (benzene, toluene, $o/m/p$-xylene, naphthalene).
 2. **Alcohols:** Group $-OH$ on saturated C; suffix `-ol`; common: "álcool ...ílico" (ethanol, menthol, citronellol).
 3. **Phenols:** Group $-OH$ attached directly to benzene ring; `hidroxibenzeno`, cresols ($o, m, p$), 1-naphthol, 2-naphthol.
@@ -94,8 +94,19 @@ Every agent working on questions, parser logic, or theory must implement 100% of
 15. **Acyl Halides:** $R-COX$; halide of `...oíla` (e.g., cloreto de etanoíla).
 16. **Anhydrides:** Acid dehydration product; `anidrido ...oico` (acetic anhydride).
 
+**Sulfur functions** (beyond `funcoes.pdf`, added for the Brazilian high-school curriculum):
+
+17. **Thiols (`tiol`):** $-SH$ on carbon; suffix `-tiol` keeping the hydride's "o" (`etanotiol`, `propano-1-tiol`); prefix `sulfanil-` (two of them: `bis(sulfanil)`); usual "mercaptana".
+18. **Sulfides (`tioeter`):** $C-S-C$; prefix-only, `(metilsulfanil)etano`; usual "sulfeto de etila e metila".
+19. **Disulfides (`dissulfeto`):** $C-S-S-C$; prefix-only, `(metildissulfanil)metano`; usual "dissulfeto de dimetila".
+20. **Sulfonic acids (`acido_sulfonico`):** $-SO_3H$ on carbon; `ácido ...ossulfônico` with the doubled "s" (`ácido metanossulfônico`, `ácido propano-1-sulfônico`); prefix `sulfo-`; anion `...sulfonato`.
+
+Sulfur in any other environment (sulfoxide, sulfone, thioester, C=S, sulfonamide, sulfonate ester, HS-S-) is **refused** by the engine with problem code `unsupported_group` — it must never be dropped from a name. `classifySulfur` in `graph-namer.ts` is the single source of truth for which role a sulfur atom plays.
+
 ### 3.1 IUPAC Priority Order (Polyfunctional Compounds)
-$$\text{Carboxylic Acid} > \text{Anhydride} > \text{Ester} > \text{Acyl Halide} > \text{Amide} > \text{Nitrile} > \text{Aldehyde} > \text{Ketone} > \text{Alcohol} > \text{Enol} > \text{Phenol} > \text{Amine} > \text{Ether} > \text{Halide} > \text{Nitro} > \text{Hydrocarbon}$$
+$$\text{Carboxylic Acid} > \text{Sulfonic Acid} > \text{Anhydride} > \text{Ester} > \text{Acyl Halide} > \text{Amide} > \text{Nitrile} > \text{Aldehyde} > \text{Ketone} > \text{Alcohol} > \text{Enol} > \text{Phenol} > \text{Thiol} > \text{Amine} > \text{Ether} > \text{Sulfide} > \text{Disulfide} > \text{Halide} > \text{Nitro} > \text{Hydrocarbon}$$
+
+UI copy must not hard-code the number of functions; use `ORGANIC_FUNCTION_COUNT`.
 
 ### 3.2 Functions Acting as Radicals & Bizarre Molecules
 In polyfunctional compounds, the dominant function takes the **suffix**, while all other functions become **radicals/prefixes**:
@@ -109,6 +120,7 @@ In polyfunctional compounds, the dominant function takes the **suffix**, while a
 - Carboxylic Acid $\rightarrow$ `carboxi-` (when subordinated)
 - Ester $\rightarrow$ `alcoxicarbonil-` or `acetóxi-`
 - Amide $\rightarrow$ `carbamoil-`
+- Thiol $\rightarrow$ `sulfanil-`; Sulfide $\rightarrow$ `(metilsulfanil)-`; Disulfide $\rightarrow$ `(metildissulfanil)-`; Sulfonic acid $\rightarrow$ `sulfo-`
 - Complex branched radicals: `(clorometil)-`, `(hidroximetil)-`, `(2-aminoetil)-`, `(4-nitrofenil)-`.
 
 ---

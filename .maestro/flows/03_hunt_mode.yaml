@@ -1,0 +1,14 @@
+appId: com.android.chrome
+---
+- tapOn:
+    text: ".*Caça.*"
+- assertVisible:
+    text: ".*funções orgânicas aparecem nesta molécula.*"
+- scroll
+- tapOn:
+    point: "25%,65%"
+- takeScreenshot: "maestro_03_hunt_selected"
+- tapOn: "Conferir caçada"
+- assertVisible:
+    text: ".*de acerto.*"
+- takeScreenshot: "maestro_03_hunt_result"

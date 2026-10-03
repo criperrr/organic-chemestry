@@ -20,6 +20,7 @@ import { FluidMolecule } from './FluidMolecule.js';
 import {
   parseIUPACName,
   IUPAC_PRIORITY_ORDER,
+  ORGANIC_FUNCTION_COUNT,
   type Molecule,
 } from '@quimicarush/chemistry-core';
 import {
@@ -39,6 +40,7 @@ export type SandboxCategory =
   | 'oxigenadas'
   | 'nitrogenadas'
   | 'haletos'
+  | 'sulfuradas'
   | 'aromaticos'
   | 'caos';
 
@@ -48,6 +50,7 @@ const CATEGORY_CHIPS: { id: SandboxCategory; label: string; icon?: React.FC<{ cl
   { id: 'oxigenadas', label: 'Oxigenadas' },
   { id: 'nitrogenadas', label: 'Nitrogenadas' },
   { id: 'haletos', label: 'Haletos & Derivados' },
+  { id: 'sulfuradas', label: 'Sulfuradas' },
   { id: 'aromaticos', label: 'Aromáticos' },
   { id: 'caos', label: 'Modo Caos', icon: Flame },
 ];
@@ -107,6 +110,10 @@ export const SandboxHub: React.FC = () => {
       } else if (selectedCategory === 'haletos') {
         list = list.filter((m) =>
           ['haleto_alquila', 'haleto_acila'].includes(m.primaryFunction)
+        );
+      } else if (selectedCategory === 'sulfuradas') {
+        list = list.filter((m) =>
+          ['tiol', 'tioeter', 'dissulfeto', 'acido_sulfonico'].includes(m.primaryFunction)
         );
       } else if (selectedCategory === 'aromaticos') {
         list = list.filter((m) =>
@@ -453,7 +460,7 @@ export const SandboxHub: React.FC = () => {
                 </h3>
               </div>
               <span className="text-[11px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
-                Prioridade: {priorityRank}/16
+                Prioridade: {priorityRank}/{ORGANIC_FUNCTION_COUNT}
               </span>
             </div>
 
@@ -545,7 +552,7 @@ export const SandboxHub: React.FC = () => {
               <div className="flex items-center gap-2">
                 <span className="text-[var(--md-sys-color-on-surface-variant)]">Ordem de Prioridade IUPAC:</span>
                 <span className="m3-chip text-[10px] py-0.5 px-2 font-mono">
-                  Posto {priorityRank} de 16
+                  Posto {priorityRank} de {ORGANIC_FUNCTION_COUNT}
                 </span>
               </div>
             </div>

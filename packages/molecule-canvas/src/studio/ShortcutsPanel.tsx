@@ -39,11 +39,11 @@ const SECTIONS: { title: string; rows: [string, string][] }[] = [
   },
 ];
 
-export const ShortcutsPanel: React.FC<{ onHide: () => void }> = ({ onHide }) => (
+export const ShortcutsPanel: React.FC<{ top: number; onHide: () => void }> = ({ top, onHide }) => (
   <Balloon
     title="Atalhos do Teclado"
     icon={<Keyboard className="w-4 h-4" />}
-    initialPosition={{ top: 72, right: 16 }}
+    initialPosition={{ top, right: 16 }}
     width={290}
     onHide={onHide}
     hideKey="K"

@@ -82,6 +82,21 @@ const MORPHEMES: Record<string, string> = {
   carboxamida: 'carboxamide',
   carbonila: 'carbonyl',
 
+  // --- Sulfur functions ---------------------------------------------------
+  // The hydride's "o" and the doubled "s" of the Novo Acordo are Portuguese
+  // spelling only: metanossulfônico -> methanesulfonic.
+  'ossulfônico': 'esulfonic',
+  'dissulfônico': 'disulfonic',
+  'sulfônico': 'sulfonic',
+  ossulfonato: 'esulfonate',
+  dissulfonato: 'disulfonate',
+  sulfonato: 'sulfonate',
+  dissulfanil: 'disulfanyl',
+  sulfanil: 'sulfanyl',
+  dissulfo: 'disulfo',
+  sulfo: 'sulfo',
+  tiol: 'thiol',
+
   // --- Substituent prefixes -------------------------------------------------
   'terc-butil': 'tert-butyl',
   'sec-butil': 'sec-butyl',
@@ -311,6 +326,14 @@ export function translateIupacToEnglish(ptName: string): string | null {
     const halves = anhydride[1].split(' e ').map(translateCore);
     if (halves.some(half => half === null)) return null;
     return `${halves.join(' ')} anhydride`;
+  }
+
+  // "metanossulfonato de sódio" -> "sodium methanesulfonate"
+  const salt = name.match(/^(.+) de (dis|di)?(sódio|potássio)$/);
+  if (salt) {
+    const anion = translateCore(salt[1]);
+    const cation = `${salt[2] ? 'di' : ''}${salt[3] === 'sódio' ? 'sodium' : 'potassium'}`;
+    return anion ? `${cation} ${anion}` : null;
   }
 
   // "etanoato de etila" -> "ethyl ethanoate"

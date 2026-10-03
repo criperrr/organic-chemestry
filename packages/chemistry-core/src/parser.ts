@@ -176,7 +176,8 @@ function resolvePrimaryFunction(
   suffixLocants?: number[],
   carbonCount: number = 1
 ): OrganicFunction {
-  // 1. Special prefixes take precedence
+  // 1. Special prefixes take precedence — "ácido" alone does not say which acid
+  if (/^(dis)?sulfon(ico|ato)$/.test(functionSuffix)) return 'acido_sulfonico';
   if (isSpecialPrefix === 'acido') return 'acido_carboxilico';
   if (isSpecialPrefix === 'anidrido') return 'anidrido';
   if (isSpecialPrefix === 'eter') return 'eter';
@@ -208,6 +209,10 @@ function resolvePrimaryFunction(
     case 'amina':
     case 'diamina':
       return 'amina';
+    case 'tiol':
+    case 'ditiol':
+    case 'tritiol':
+      return 'tiol';
     case 'ol':
     case 'diol':
     case 'triol': {
@@ -252,6 +257,11 @@ function resolvePrimaryFunction(
         (s) => s.subordinateFunction === 'eter'
       );
       if (etherSub) return 'eter';
+
+      // Sulfides and disulfides: (metilsulfanil)etano, (metildissulfanil)metano
+      for (const sulfurFn of ['tioeter', 'dissulfeto'] as const) {
+        if (substituents.some((s) => s.subordinateFunction === sulfurFn)) return sulfurFn;
+      }
 
       // Alkyl halides: cloro, bromo, fluor, iodo
       const halideSub = substituents.find(
@@ -343,6 +353,42 @@ export function parseIUPACName(rawInput: string): IUPACNameAST {
       bonds: [{ type: 'an' }],
       functionSuffix: 'o',
       primaryFunction: 'eter',
+      rawNormalized: normalized,
+    };
+  }
+
+  // Usual sulfur names: 'sulfeto de dimetila', 'sulfeto de etila e metila',
+  // 'dissulfeto de dialila', 'metilmercaptana', 'mercaptana etilica'.
+  const sulfideMatch = normalized.match(/^(dis)?sulfeto de (.+)$/);
+  const mercaptanMatch =
+    normalized.match(/^([a-z]+?)-?mercaptana$/) ?? normalized.match(/^mercaptana ([a-z]+)ica$/);
+  if (sulfideMatch || mercaptanMatch) {
+    const radicalCarbons = (radical: string) =>
+      CARBON_STEM_MAP[radical.replace(/^di/, '').replace(/(il|ila|al|alil)$/, '')] ??
+      (/alil/.test(radical) ? 3 : 1);
+    let carbonCount: number;
+    let primaryFunction: OrganicFunction;
+    if (sulfideMatch) {
+      const radicals = sulfideMatch[2].split(/\s+e\s+/);
+      const counts = radicals.flatMap((r) =>
+        r.startsWith('di') ? [radicalCarbons(r), radicalCarbons(r)] : [radicalCarbons(r)]
+      );
+      carbonCount = counts.reduce((a, b) => a + b, 0);
+      primaryFunction = sulfideMatch[1] ? 'dissulfeto' : 'tioeter';
+    } else {
+      carbonCount = radicalCarbons(mercaptanMatch![1]);
+      primaryFunction = 'tiol';
+    }
+    const stem =
+      Object.entries(CARBON_STEM_MAP).find(([, n]) => n === carbonCount)?.[0] ?? 'met';
+    return {
+      isRing: false,
+      substituents: [],
+      mainChainPrefix: stem,
+      carbonCount,
+      bonds: [{ type: 'an' }],
+      functionSuffix: primaryFunction === 'tiol' ? 'tiol' : 'o',
+      primaryFunction,
       rawNormalized: normalized,
     };
   }

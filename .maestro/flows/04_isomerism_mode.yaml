@@ -1,0 +1,21 @@
+appId: com.android.chrome
+---
+- tapOn:
+    text: ".*Isomeria.*"
+- assertVisible:
+    text: "Praticar Isomeria"
+- takeScreenshot: "maestro_04_isomerism_pairs"
+- tapOn:
+    text: "Quiralidade"
+- assertVisible:
+    text: ".*Quantos centros quirais.*"
+- takeScreenshot: "maestro_04_isomerism_chiral"
+- tapOn:
+    text: "Cis-Trans"
+- assertVisible:
+    text: ".*geométrica.*"
+- takeScreenshot: "maestro_04_isomerism_geometric"
+- tapOn:
+    text: "Pares"
+- assertVisible:
+    text: ".*relação isomérica entre estas duas moléculas.*"

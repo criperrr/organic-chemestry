@@ -117,14 +117,8 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
       : [];
 
   return (
-    <div
-      className="flex flex-col items-center gap-1.5 pointer-events-auto max-w-[96vw]"
-      style={{ pointerEvents: 'auto' }}
-    >
-      <div
-        className="studio-floating rounded-full px-1.5 py-1.5 flex items-center gap-1 overflow-x-auto no-scrollbar max-w-full"
-        style={{ pointerEvents: 'auto' }}
-      >
+    <div className="relative max-w-full">
+      <div className="studio-floating rounded-full px-1.5 py-1.5 flex items-center gap-1 overflow-x-auto no-scrollbar max-w-full">
         {TOOLS.map(({ id, label, icon: Icon, key }) => (
           <button
             key={id}
@@ -132,7 +126,6 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
             onClick={() => onSelectTool(id)}
             title={`${label} [${key}]`}
             aria-pressed={tool === id}
-            style={{ pointerEvents: 'auto', cursor: 'pointer' }}
             className={`h-9 px-3 rounded-full flex items-center gap-2 text-[13px] font-semibold shrink-0 transition-colors cursor-pointer ${
               tool === id
                 ? 'bg-[var(--md-sys-color-primary)] text-[var(--md-sys-color-on-primary)]'
@@ -140,7 +133,7 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
             }`}
           >
             <Icon className="w-4 h-4 shrink-0" />
-            <span className="hidden md:inline">{label}</span>
+            <span className="hidden 2xl:inline">{label}</span>
           </button>
         ))}
 
@@ -152,11 +145,10 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
             onClick={onAutoAlign}
             disabled={!state?.canAutoAlign}
             title="Auto-organizar e alinhar molécula [O]"
-            style={{ pointerEvents: state?.canAutoAlign ? 'auto' : 'none', cursor: state?.canAutoAlign ? 'pointer' : 'default' }}
             className="h-9 px-3 rounded-full flex items-center gap-1.5 text-[13px] font-semibold shrink-0 transition-colors text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-highest)] hover:text-[var(--md-sys-color-primary)] disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
           >
             <Wand2 className="w-4 h-4 shrink-0 text-[var(--md-sys-color-tertiary)]" />
-            <span className="hidden lg:inline">Alinhar</span>
+            <span className="hidden 2xl:inline">Alinhar</span>
           </button>
         )}
 
@@ -176,7 +168,6 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
             onClick={onClick}
             disabled={disabled}
             title={label}
-            style={{ pointerEvents: disabled ? 'none' : 'auto', cursor: disabled ? 'default' : 'pointer' }}
             className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-highest)] hover:text-[var(--md-sys-color-on-surface)] disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
           >
             <Icon className="w-4 h-4" />
@@ -189,18 +180,16 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
           type="button"
           onClick={onHide}
           title="Ocultar barra [T]"
-          style={{ pointerEvents: 'auto', cursor: 'pointer' }}
           className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 text-[var(--md-sys-color-on-surface-variant)] hover:bg-[var(--md-sys-color-surface-container-highest)] transition-colors cursor-pointer"
         >
           <X className="w-4 h-4" />
         </button>
       </div>
 
+      {/* Floats below the bar instead of growing the header, so opening a palette
+          never shoves the panels that are placed under the header. */}
       {palette.length > 0 && (
-        <div
-          className="studio-floating rounded-3xl px-2 py-2 flex flex-col gap-1.5 max-w-[96vw] max-h-[46vh] overflow-y-auto"
-          style={{ pointerEvents: 'auto' }}
-        >
+        <div className="studio-floating absolute top-full left-1/2 -translate-x-1/2 mt-1.5 w-max max-w-[min(94vw,560px)] rounded-3xl px-2 py-2 flex flex-col gap-1.5 max-h-[32vh] overflow-y-auto">
           {palette.map(bucket => (
             <div key={bucket.group} className="flex flex-col gap-1">
               <span className="text-[9px] font-mono uppercase tracking-wider text-[var(--md-sys-color-on-surface-variant)] px-1.5">
@@ -214,7 +203,6 @@ export const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
                     onClick={item.onClick}
                     title={item.title}
                     aria-pressed={item.active}
-                    style={{ pointerEvents: 'auto', cursor: 'pointer' }}
                     className={`h-9 pl-1.5 pr-2.5 rounded-full flex items-center gap-1.5 text-[12px] font-mono font-semibold transition-colors cursor-pointer ${
                       item.active
                         ? 'bg-[var(--md-sys-color-secondary-container)] text-[var(--md-sys-color-on-secondary-container)]'

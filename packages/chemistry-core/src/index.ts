@@ -6,3 +6,4 @@ export * from './evaluator.js';
 export * from './graph-namer.js';
 export * from './function-guide.js';
 export * from './ptbr-to-english.js';
+export * from './isomerism.js';

@@ -10,6 +10,8 @@ import { Balloon } from './Balloon.js';
 
 export interface NamePanelProps {
   analysis: MolecularGraphAnalysis;
+  /** Distance from the top of the viewport, clear of the Studio header. */
+  top: number;
   onHide: () => void;
   /** Present only where there is an Arcade to send the molecule to. */
   onSendToArcade?: () => void;
@@ -32,7 +34,7 @@ const FormulaText: React.FC<{ formula: string }> = ({ formula }) => (
   </>
 );
 
-export const NamePanel: React.FC<NamePanelProps> = ({ analysis, onHide, onSendToArcade }) => {
+export const NamePanel: React.FC<NamePanelProps> = ({ analysis, top, onHide, onSendToArcade }) => {
   const [copied, setCopied] = useState<string | null>(null);
   const [showSteps, setShowSteps] = useState(false);
 
@@ -52,7 +54,7 @@ export const NamePanel: React.FC<NamePanelProps> = ({ analysis, onHide, onSendTo
     <Balloon
       title="Nomenclatura IUPAC"
       icon={<Tag className="w-4 h-4" />}
-      initialPosition={{ top: 72, left: 16 }}
+      initialPosition={{ top, left: 16 }}
       width={340}
       onHide={onHide}
       hideKey="I"

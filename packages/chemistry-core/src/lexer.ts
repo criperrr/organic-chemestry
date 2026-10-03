@@ -75,6 +75,12 @@ export const MULTIPLIER_MAP: Record<string, number> = {
 };
 
 export const SUFFIX_FUNCTION_MAP: Record<string, OrganicFunction> = {
+  sulfonico: 'acido_sulfonico',
+  dissulfonico: 'acido_sulfonico',
+  sulfonato: 'acido_sulfonico',
+  tiol: 'tiol',
+  ditiol: 'tiol',
+  tritiol: 'tiol',
   oico: 'acido_carboxilico',
   dioico: 'acido_carboxilico',
   carboxilico: 'acido_carboxilico',
@@ -207,6 +213,9 @@ export function tokenize(normalizedName: string): IUPACToken[] {
     }
   }
 
+  // 2a. Salt counter-ion: '... sulfonato de sodio', '... oato de potassio'
+  remaining = remaining.replace(/\s+de\s+(sodio|potassio)$/, '');
+
   // 2. Check for Ester suffix part: '... de etila', '... de metila', etc.
   let esterAlkylToken: IUPACToken | null = null;
   const esterMatch = remaining.match(/\s+de\s+([a-z]+a)$/i);
@@ -336,22 +345,27 @@ export function tokenize(normalizedName: string): IUPACToken[] {
     remaining = '';
   }
 
-  // Handle connective 'o' before consonant suffixes: e.g. 'anonitrila', 'anodiamina', 'anodial', 'anodioico'
+  // Handle connective 'o' before consonant suffixes: e.g. 'anonitrila', 'anodiamina', 'anodial',
+  // 'anodioico', 'anotiol', and the doubled s of 'anossulfonico' (metanossulfônico)
   const connectiveOConsonantMatch = remaining.match(
-    /^(an|en|in|dien|diin|trien)o(nitrila|dinitrila|diamina|diona|triol|dial|dioico|carboxilico)$/i
+    /^(an|en|in|dien|diin|trien)o(nitrila|dinitrila|diamina|diona|triol|dial|dioico|carboxilico|tiol|ditiol|tritiol|s?sulfonico|dissulfonico|s?sulfonato)$/i
   );
   if (connectiveOConsonantMatch) {
     tokens.push({
       type: 'INFIX',
       value: connectiveOConsonantMatch[1].toLowerCase(),
     });
-    const sfx = connectiveOConsonantMatch[2].toLowerCase();
+    const sfx = connectiveOConsonantMatch[2].toLowerCase().replace(/^ss/, 's');
     tokens.push({
       type: 'SUFFIX',
       value: sfx === 'dioico' ? 'oico' : sfx,
     });
     remaining = '';
   }
+
+  // A ring or unsaturated parent keeps its linking 'o' too: 'benzeno' + 'ssulfonico',
+  // 'prop-2-eno-1-tiol'. The stem table already swallowed 'benzeno'; strip the rest.
+  remaining = remaining.replace(/^ss(ulfon)/, 's$1');
 
   // 6. Bond infix with optional locants:
   // e.g. '-2-en-', '-1,3-dien-', 'an-', 'an', 'en', 'in'
@@ -365,6 +379,10 @@ export function tokenize(normalizedName: string): IUPACToken[] {
         metadata: { locants },
       });
       remaining = remaining.slice(bondMatch[0].length);
+      // 'prop-2-eno-1-tiol', 'but-2-eno-1,4-diol': the linking 'o' between the
+      // infix and a located or consonant-initial suffix carries no meaning.
+      remaining = remaining.replace(/^o-(?=[0-9])/, '').replace(/^o(?=(tiol|ditiol|s?sulfon|di|tri))/, '');
+      remaining = remaining.replace(/^ss(ulfon)/, 's$1');
     }
   }
 

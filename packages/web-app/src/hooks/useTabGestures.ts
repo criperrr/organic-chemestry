@@ -3,7 +3,7 @@ import { useGameStore } from '../stores/useGameStore.js';
 import type { ActiveTab } from '../stores/useGameStore.js';
 
 /** Tab order, left to right — the same order the bars display. */
-export const TAB_ORDER: ActiveTab[] = ['arcade', 'cacar', 'theory', 'sandbox'];
+export const TAB_ORDER: ActiveTab[] = ['arcade', 'cacar', 'isomeria', 'theory', 'sandbox'];
 
 /**
  * Lets the four tabs be reached by gesture instead of by aiming at a control:

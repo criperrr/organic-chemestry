@@ -1,0 +1,8 @@
+appId: com.android.chrome
+---
+- tapOn:
+    point: "48%,14%"
+- takeScreenshot: "maestro_06_controls_sheet"
+- tapOn:
+    point: "89%,31%"
+- takeScreenshot: "maestro_06_controls_closed"

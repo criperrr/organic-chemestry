@@ -1,8 +1,8 @@
 /**
  * packages/chemistry-core/src/function-guide.ts
  *
- * Canonical pt-BR nomenclature guide for the 16 organic functions of
- * `funcoes.pdf`. Powers the "Caça-Funções" game mode, where the student must
+ * Canonical pt-BR nomenclature guide for the organic functions of
+ * `funcoes.pdf` plus the high-school sulfur functions. Powers the "Caça-Funções" game mode, where the student must
  * identify which functions a molecule contains and then state *how* each one is
  * named (aldeído → termina em "-al", cetona → "-ona", and so on).
  */
@@ -26,7 +26,7 @@ export interface FunctionNomenclature {
   prefix: string | null;
   /** Fixed naming template when the function is not built from a plain suffix. */
   template: string | null;
-  /** IUPAC seniority, 16 = highest. */
+  /** IUPAC seniority (IUPAC_PRIORITY_ORDER), higher = more senior. */
   priority: number;
   /** One-line recognition rule for a high-school student. */
   recognition: string;
@@ -49,11 +49,36 @@ export const FUNCTION_GUIDE: Record<OrganicFunction, FunctionNomenclature> = {
     suffix: '-oico',
     prefix: 'carboxi-',
     template: 'ácido …oico',
-    priority: 16,
+    priority: 20,
     recognition: 'Carbonila (C=O) e hidroxila (-OH) no MESMO carbono, sempre na ponta da cadeia.',
     mnemonic: 'É o rei da fila: ganha de todo mundo e ainda leva a palavra "ácido" na frente.',
     example: { name: 'ácido etanoico', smiles: 'CC(=O)O', commonName: 'ácido acético (vinagre)' },
     acceptedAnswers: ['oico', 'acido oico', 'acido -oico', '-oico', 'ico', 'acido ico', 'carboxi'],
+  },
+  acido_sulfonico: {
+    id: 'acido_sulfonico',
+    label: 'Ácido sulfônico',
+    groupSymbol: '-SO₃H',
+    suffix: '-sulfônico',
+    prefix: 'sulfo-',
+    template: 'ácido …sulfônico',
+    priority: 19,
+    recognition: 'Enxofre ligado ao carbono, com DOIS oxigênios em dupla e uma hidroxila: -SO₃H.',
+    mnemonic: 'É o "ácido sulfúrico que ganhou um carbono": detergente é o sal dele.',
+    example: {
+      name: 'ácido benzenossulfônico',
+      smiles: 'OS(=O)(=O)c1ccccc1',
+      commonName: 'base dos detergentes (alquilbenzenossulfonatos)',
+    },
+    acceptedAnswers: [
+      'sulfonico',
+      '-sulfonico',
+      'acido sulfonico',
+      'acido -sulfonico',
+      'acido ossulfonico',
+      'ossulfonico',
+      'sulfo',
+    ],
   },
   anidrido: {
     id: 'anidrido',
@@ -62,7 +87,7 @@ export const FUNCTION_GUIDE: Record<OrganicFunction, FunctionNomenclature> = {
     suffix: '-oico',
     prefix: null,
     template: 'anidrido …oico',
-    priority: 15,
+    priority: 18,
     recognition: 'Dois grupos carbonila ligados pelo mesmo oxigênio: C(=O)-O-C(=O).',
     mnemonic: 'São dois ácidos que perderam uma água ("an-idro" = sem água).',
     example: { name: 'anidrido etanoico', smiles: 'CC(=O)OC(=O)C', commonName: 'anidrido acético' },
@@ -75,7 +100,7 @@ export const FUNCTION_GUIDE: Record<OrganicFunction, FunctionNomenclature> = {
     suffix: '-oato',
     prefix: 'alcoxicarbonil-',
     template: '…oato de …ila',
-    priority: 14,
+    priority: 17,
     recognition: 'Carbonila ligada a um oxigênio que continua em outro carbono: C(=O)-O-C.',
     mnemonic: '"oato de ila" — é o cheiro das frutas e da essência de banana.',
     example: { name: 'etanoato de etila', smiles: 'CCOC(=O)C', commonName: 'acetato de etila' },
@@ -88,7 +113,7 @@ export const FUNCTION_GUIDE: Record<OrganicFunction, FunctionNomenclature> = {
     suffix: '-oíla',
     prefix: null,
     template: 'cloreto de …oíla',
-    priority: 13,
+    priority: 16,
     recognition: 'Carbonila ligada diretamente a um halogênio (F, Cl, Br, I).',
     mnemonic: 'Halogênio grudado na carbonila: "cloreto de etanoíla".',
     example: { name: 'cloreto de etanoíla', smiles: 'CC(=O)Cl', commonName: 'cloreto de acetila' },
@@ -101,7 +126,7 @@ export const FUNCTION_GUIDE: Record<OrganicFunction, FunctionNomenclature> = {
     suffix: '-amida',
     prefix: 'carbamoil-',
     template: null,
-    priority: 12,
+    priority: 15,
     recognition: 'Carbonila (C=O) ligada diretamente a um nitrogênio.',
     mnemonic: 'Carbonila + nitrogênio = amida. É a ligação que monta as proteínas.',
     example: { name: 'etanamida', smiles: 'CC(=O)N', commonName: 'acetamida' },
@@ -114,7 +139,7 @@ export const FUNCTION_GUIDE: Record<OrganicFunction, FunctionNomenclature> = {
     suffix: '-nitrila',
     prefix: 'ciano-',
     template: '…onitrila',
-    priority: 11,
+    priority: 14,
     recognition: 'Carbono ligado ao nitrogênio por ligação TRIPLA.',
     mnemonic: 'Tripla com N = nitrila. O carbono da tripla conta na cadeia!',
     example: { name: 'etanonitrila', smiles: 'CC#N', commonName: 'acetonitrila' },
@@ -127,7 +152,7 @@ export const FUNCTION_GUIDE: Record<OrganicFunction, FunctionNomenclature> = {
     suffix: '-al',
     prefix: 'oxo- / formil-',
     template: null,
-    priority: 10,
+    priority: 13,
     recognition: 'Carbonila (C=O) na PONTA da cadeia, com hidrogênio preso nela.',
     mnemonic: 'AldeÍdo termina em -AL. Carbonila na ponta = -al.',
     example: { name: 'etanal', smiles: 'CC=O', commonName: 'acetaldeído' },
@@ -140,7 +165,7 @@ export const FUNCTION_GUIDE: Record<OrganicFunction, FunctionNomenclature> = {
     suffix: '-ona',
     prefix: 'oxo-',
     template: null,
-    priority: 9,
+    priority: 12,
     recognition: 'Carbonila (C=O) NO MEIO da cadeia, entre dois carbonos.',
     mnemonic: 'CetONA termina em -ONA. Carbonila no meio = -ona.',
     example: { name: 'propanona', smiles: 'CC(=O)C', commonName: 'acetona' },
@@ -153,7 +178,7 @@ export const FUNCTION_GUIDE: Record<OrganicFunction, FunctionNomenclature> = {
     suffix: '-ol',
     prefix: 'hidroxi-',
     template: null,
-    priority: 8,
+    priority: 11,
     recognition: 'Hidroxila (-OH) ligada a carbono SATURADO (sp³).',
     mnemonic: 'ÁlcoOL termina em -OL. Etanol, metanol, propanol.',
     example: { name: 'etanol', smiles: 'CCO', commonName: 'álcool etílico' },
@@ -166,7 +191,7 @@ export const FUNCTION_GUIDE: Record<OrganicFunction, FunctionNomenclature> = {
     suffix: '-ol',
     prefix: 'hidroxi-',
     template: '…en…ol',
-    priority: 7,
+    priority: 10,
     recognition: 'Hidroxila (-OH) presa a um carbono que faz ligação DUPLA (sp²).',
     mnemonic: 'EN (dupla) + OL (hidroxila) = ENOL. O nome já é a definição.',
     example: { name: 'etenol', smiles: 'C=CO', commonName: 'álcool vinílico' },
@@ -179,11 +204,24 @@ export const FUNCTION_GUIDE: Record<OrganicFunction, FunctionNomenclature> = {
     suffix: '-ol',
     prefix: 'hidroxi-',
     template: 'hidroxibenzeno / …fenol',
-    priority: 6,
+    priority: 9,
     recognition: 'Hidroxila (-OH) presa DIRETAMENTE ao anel aromático.',
     mnemonic: 'OH no benzeno = fenol. Se sair do anel, vira álcool.',
     example: { name: 'hidroxibenzeno', smiles: 'Oc1ccccc1', commonName: 'fenol' },
     acceptedAnswers: ['ol', '-ol', 'fenol', 'hidroxibenzeno', 'hidroxi'],
+  },
+  tiol: {
+    id: 'tiol',
+    label: 'Tiol',
+    groupSymbol: '-SH',
+    suffix: '-tiol',
+    prefix: 'sulfanil- (mercapto-)',
+    template: null,
+    priority: 8,
+    recognition: 'Grupo -SH (sulfidrila) ligado a carbono: é um álcool com S no lugar do O.',
+    mnemonic: 'Troque o O do álcool por S e o "-ol" vira "-tiol": etanol → etanotiol.',
+    example: { name: 'etanotiol', smiles: 'CCS', commonName: 'etilmercaptana (cheiro do gás de cozinha)' },
+    acceptedAnswers: ['tiol', '-tiol', 'otiol', 'sulfanil', 'mercapto', 'mercaptana'],
   },
   amina: {
     id: 'amina',
@@ -192,7 +230,7 @@ export const FUNCTION_GUIDE: Record<OrganicFunction, FunctionNomenclature> = {
     suffix: '-amina',
     prefix: 'amino-',
     template: null,
-    priority: 5,
+    priority: 7,
     recognition: 'Nitrogênio ligado só a carbonos e/ou hidrogênios — SEM carbonila do lado.',
     mnemonic: 'Nitrogênio sozinho = amina. Com C=O do lado, vira amida.',
     example: { name: 'etanamina', smiles: 'CCN', commonName: 'etilamina' },
@@ -205,11 +243,41 @@ export const FUNCTION_GUIDE: Record<OrganicFunction, FunctionNomenclature> = {
     suffix: '-oxi',
     prefix: 'alcoxi- (metoxi-, etoxi-)',
     template: '…oxi…ano',
-    priority: 4,
+    priority: 6,
     recognition: 'Oxigênio ENTRE dois carbonos, sem nenhuma carbonila.',
     mnemonic: 'O menor lado vira "-oxi" e o maior vira a cadeia: metoxietano.',
     example: { name: 'metoxietano', smiles: 'COCC', commonName: 'éter metil-etílico' },
     acceptedAnswers: ['oxi', '-oxi', 'oxi ano', 'metoxi', 'etoxi', 'alcoxi'],
+  },
+  tioeter: {
+    id: 'tioeter',
+    label: 'Tioéter (sulfeto)',
+    groupSymbol: '-S-',
+    suffix: 'prefixo fixo',
+    prefix: 'alquilsulfanil- (metilsulfanil-)',
+    template: '(…sulfanil)…ano / sulfeto de …ila',
+    priority: 5,
+    recognition: 'Enxofre ENTRE dois carbonos, sem hidrogênio: é um éter com S no lugar do O.',
+    mnemonic: 'O menor lado vira "(metilsulfanil)" e o maior é a cadeia; no usual, "sulfeto de dimetila".',
+    example: { name: '(metilsulfanil)metano', smiles: 'CSC', commonName: 'sulfeto de dimetila (cheiro de mar)' },
+    acceptedAnswers: ['sulfanil', 'alquilsulfanil', 'metilsulfanil', 'tio', 'sulfeto', 'sulfeto de ila'],
+  },
+  dissulfeto: {
+    id: 'dissulfeto',
+    label: 'Dissulfeto',
+    groupSymbol: '-S-S-',
+    suffix: 'prefixo fixo',
+    prefix: 'alquildissulfanil- (metildissulfanil-)',
+    template: '(…dissulfanil)…ano / dissulfeto de …ila',
+    priority: 4,
+    recognition: 'DOIS enxofres ligados entre si, cada um preso a um carbono: C-S-S-C.',
+    mnemonic: 'A "ponte dissulfeto" do cabelo e do alho: dois S de mãos dadas.',
+    example: {
+      name: '(metildissulfanil)metano',
+      smiles: 'CSSC',
+      commonName: 'dissulfeto de dimetila',
+    },
+    acceptedAnswers: ['dissulfanil', 'metildissulfanil', 'ditio', 'dissulfeto', 'dissulfeto de ila'],
   },
   haleto_alquila: {
     id: 'haleto_alquila',
@@ -252,7 +320,7 @@ export const FUNCTION_GUIDE: Record<OrganicFunction, FunctionNomenclature> = {
   },
 };
 
-/** All 16 functions ordered from highest to lowest IUPAC seniority. */
+/** All functions ordered from highest to lowest IUPAC seniority. */
 export const FUNCTIONS_BY_PRIORITY: FunctionNomenclature[] = Object.values(FUNCTION_GUIDE).sort(
   (a, b) => b.priority - a.priority
 );

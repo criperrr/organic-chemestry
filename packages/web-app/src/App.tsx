@@ -7,6 +7,7 @@ import { SlotBuilder } from './components/SlotBuilder.js';
 import { FeedbackCard } from './components/FeedbackCard.js';
 import { TheoryHub } from './components/TheoryHub.js';
 import { FunctionHunt } from './components/FunctionHunt.js';
+import { IsomerismTrainer } from './components/IsomerismTrainer.js';
 import { MomentumBar } from './components/MomentumBar.js';
 import { KeyboardShortcuts } from './components/KeyboardShortcuts.js';
 import { KeyboardCheatsheetModal } from './components/KeyboardCheatsheetModal.js';
@@ -160,30 +161,34 @@ export const App: React.FC = () => {
 
         {/* Center Stage: 100% Focused on the Molecule & Interactive Input */}
         <main
-          className={`flex-1 flex flex-col items-center justify-start lg:justify-center px-2 py-3 sm:px-6 sm:py-8 min-w-0 w-full overflow-y-auto ${
+          className={`flex-1 flex flex-col items-center justify-start lg:justify-center px-2 py-2 sm:px-6 sm:py-6 pb-28 lg:pb-8 min-w-0 w-full overflow-y-auto ${
             isFullscreen ? 'max-w-6xl mx-auto' : ''
           }`}
         >
           {activeTab === 'cacar' ? (
-            <div className="w-full max-w-3xl mx-auto">
+            <div className="w-full max-w-3xl mx-auto pb-4">
               <FunctionHunt />
             </div>
+          ) : activeTab === 'isomeria' ? (
+            <div className="w-full max-w-4xl mx-auto pb-4">
+              <IsomerismTrainer />
+            </div>
           ) : activeTab === 'theory' ? (
-            <div className="w-full max-w-4xl mx-auto">
+            <div className="w-full max-w-4xl mx-auto pb-4">
               <TheoryHub />
             </div>
           ) : (
             <div
               className={`w-full ${
                 isFullscreen ? 'max-w-3xl' : 'max-w-2xl xl:max-w-3xl'
-              } mx-auto flex flex-col items-center gap-4 sm:gap-6`}
+              } mx-auto flex flex-col items-center gap-3 sm:gap-6`}
             >
               {/* Molecule Presentation Stage (Material 3 Card - Clean & Serene) */}
               {currentMolecule ? (
-                <div className="w-full flex flex-col gap-4 sm:gap-6">
+                <div className="w-full flex flex-col gap-3 sm:gap-6">
                   <MomentumBar />
                   <div
-                    className={`m3-card w-full p-4 sm:p-7 flex flex-col items-center gap-3 sm:gap-4 transition-all duration-200 ${
+                    className={`m3-card w-full p-3 sm:p-7 flex flex-col items-center gap-2.5 sm:gap-4 transition-all duration-200 ${
                       isGoldenMolecule && !isAnswerSubmitted
                         ? 'shadow-[0_0_0_2px_#d4a017,0_0_28px_-6px_#d4a017]'
                         : 'shadow-sm'
@@ -192,7 +197,7 @@ export const App: React.FC = () => {
                     {/* Top Context Header */}
                     <div className="w-full flex items-center justify-between gap-2 text-xs font-mono">
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <div className="m3-chip gap-1.5 py-1 px-2.5 sm:px-3 truncate">
+                        <div className="m3-chip gap-1.5 py-0.5 sm:py-1 px-2 sm:px-3 truncate">
                           <Atom className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)] shrink-0" />
                           <span className="text-[10px] sm:text-[11px] text-[var(--md-sys-color-on-surface-variant)] uppercase tracking-wider font-medium">Fórmula:</span>
                           <strong className="font-bold text-[var(--md-sys-color-on-surface)]">{currentMolecule.formula}</strong>
@@ -202,7 +207,7 @@ export const App: React.FC = () => {
                           onClick={openMoleculeZoom}
                           title="Ampliar visualização 2D da molécula"
                           aria-label="Ampliar visualização 2D da molécula"
-                          className="m3-chip hover:border-[var(--md-sys-color-primary)] text-[var(--md-sys-color-primary)] py-1 px-2 flex items-center gap-1 cursor-pointer transition-colors"
+                          className="m3-chip hover:border-[var(--md-sys-color-primary)] text-[var(--md-sys-color-primary)] py-0.5 sm:py-1 px-2 flex items-center gap-1 cursor-pointer transition-colors"
                         >
                           <ZoomIn className="w-3.5 h-3.5" />
                           <span className="hidden xs:inline text-[10px] font-mono font-bold uppercase">Zoom</span>
@@ -210,11 +215,11 @@ export const App: React.FC = () => {
                       </div>
 
                       <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                        <span className="m3-chip font-mono text-[10px] sm:text-[11px] uppercase tracking-wider py-1 px-2 sm:px-2.5">
+                        <span className="m3-chip font-mono text-[10px] sm:text-[11px] uppercase tracking-wider py-0.5 sm:py-1 px-2 sm:px-2.5">
                           {currentMolecule.difficulty}
                         </span>
                         {difficultyFilter === 'caos' && (
-                          <span className="m3-chip bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)] border-[var(--md-sys-color-error)] font-bold font-mono text-[10px] sm:text-[11px] py-1 px-2 sm:px-2.5 flex items-center gap-1">
+                          <span className="m3-chip bg-[var(--md-sys-color-error-container)] text-[var(--md-sys-color-on-error-container)] border-[var(--md-sys-color-error)] font-bold font-mono text-[10px] sm:text-[11px] py-0.5 sm:py-1 px-2 sm:px-2.5 flex items-center gap-1">
                             <Flame className="w-3 h-3 text-[var(--md-sys-color-error)]" />
                             CAOS
                           </span>
@@ -224,14 +229,14 @@ export const App: React.FC = () => {
 
                     {/* SmilesCanvas 2D Molecular Depiction (Clickable to Zoom) */}
                     <div
-                      className="w-full flex items-center justify-center p-2 sm:p-4 my-0.5 sm:my-1 cursor-zoom-in group relative"
+                      className="w-full flex items-center justify-center p-1 sm:p-4 my-0.5 sm:my-1 cursor-zoom-in group relative"
                       onClick={openMoleculeZoom}
                       title="Toque para ampliar a estrutura 2D"
                     >
                       <FluidMolecule
                         smiles={currentMolecule.smiles}
-                        maxWidth={380}
-                        aspect={0.58}
+                        maxWidth={340}
+                        aspect={0.52}
                         className="max-w-full group-hover:scale-[1.01] transition-transform duration-150"
                       />
                       <div className="absolute bottom-1 right-2 opacity-0 group-hover:opacity-100 sm:group-hover:opacity-100 transition-opacity bg-black/60 text-white/90 text-[10px] font-mono px-2 py-0.5 rounded pointer-events-none flex items-center gap-1">
@@ -241,11 +246,11 @@ export const App: React.FC = () => {
                     </div>
 
                     {/* Question Header */}
-                    <div className="text-center max-w-xl mx-auto">
-                      <h2 className="text-base sm:text-xl font-bold text-[var(--md-sys-color-on-surface)] tracking-tight">
+                    <div className="text-center max-w-xl mx-auto px-1">
+                      <h2 className="text-sm sm:text-xl font-bold text-[var(--md-sys-color-on-surface)] tracking-tight">
                         Qual é a nomenclatura IUPAC oficial canônica desta estrutura?
                       </h2>
-                      <p className="text-[11px] sm:text-xs text-[var(--md-sys-color-on-surface-variant)] mt-1 sm:mt-1.5">
+                      <p className="text-[10px] sm:text-xs text-[var(--md-sys-color-on-surface-variant)] mt-0.5 sm:mt-1.5">
                         {inputMode === 'speedrunner'
                           ? 'Digite a nomenclatura canônica e pressione Enter para submeter'
                           : 'Monte o nome morfológico selecionando os blocos interativos abaixo'}

@@ -92,7 +92,7 @@ export const SpeedrunnerInput: React.FC = () => {
           autoCorrect="off"
           spellCheck={false}
           style={{ fontVariantLigatures: 'none' }}
-          className={`w-full bg-transparent text-[var(--md-sys-color-on-surface)] placeholder:text-[var(--md-sys-color-on-surface-variant)]/60 font-mono text-base sm:text-lg px-3.5 sm:px-4 py-3 pr-24 sm:pr-36 outline-none transition-colors ${
+          className={`w-full bg-transparent text-[var(--md-sys-color-on-surface)] placeholder:text-[var(--md-sys-color-on-surface-variant)]/60 font-mono text-sm sm:text-lg px-3.5 sm:px-4 py-3 pr-28 sm:pr-36 outline-none transition-colors ${
             isAnswerSubmitted
               ? currentEvaluation?.isPerfect
                 ? 'text-[var(--md-sys-color-primary)] font-bold'
@@ -107,7 +107,7 @@ export const SpeedrunnerInput: React.FC = () => {
         <button
           type="submit"
           disabled={isAnswerSubmitted || !userInput.trim()}
-          className="m3-button-filled absolute right-1.5 sm:right-2 py-2 px-3 sm:px-3.5 text-xs sm:text-sm font-bold flex items-center gap-1.5 disabled:opacity-40 min-h-[40px]"
+          className="m3-button-filled absolute right-1 sm:right-2 py-2 px-3 sm:px-3.5 text-xs sm:text-sm font-bold flex items-center gap-1.5 disabled:opacity-40 min-h-[44px] cursor-pointer"
           aria-label="Confirmar resposta"
         >
           <span>Confirmar</span>

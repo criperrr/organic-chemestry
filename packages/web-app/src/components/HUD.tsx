@@ -18,9 +18,11 @@ import {
   Maximize2,
   Minimize2,
   Crosshair,
+  GitFork,
 } from 'lucide-react';
 import { useGameStore, MONET_PALETTES } from '../stores/useGameStore.js';
 import { ALL_BADGES } from '@quimicarush/gamification-engine';
+import { ORGANIC_FUNCTION_COUNT } from '@quimicarush/chemistry-core';
 import type { DifficultyTier, OrganicFunction } from '@quimicarush/chemistry-core';
 
 export const DIFFICULTY_LABELS: Record<DifficultyTier | 'todos', string> = {
@@ -32,7 +34,7 @@ export const DIFFICULTY_LABELS: Record<DifficultyTier | 'todos', string> = {
 };
 
 export const FUNCTION_LABELS: Record<OrganicFunction | 'todos', string> = {
-  todos: 'Todas as Funções (16)',
+  todos: `Todas as Funções (${ORGANIC_FUNCTION_COUNT})`,
   hidrocarboneto: 'Hidrocarbonetos',
   alcool: 'Álcoois',
   fenol: 'Fenóis',
@@ -49,6 +51,10 @@ export const FUNCTION_LABELS: Record<OrganicFunction | 'todos', string> = {
   haleto_alquila: 'Haletos de Alquila',
   haleto_acila: 'Haletos de Acila',
   anidrido: 'Anidridos',
+  tiol: 'Tióis',
+  tioeter: 'Tioéteres',
+  dissulfeto: 'Dissulfetos',
+  acido_sulfonico: 'Ácidos Sulfônicos',
 };
 
 /**
@@ -89,8 +95,9 @@ export const NavigationRail: React.FC = () => {
               [
                 { id: 'arcade' as const, label: 'Treino', icon: Zap, hint: 'Modo Treino Interativo [1]' },
                 { id: 'cacar' as const, label: 'Caçada', icon: Crosshair, hint: 'Caça-Funções: identifique as funções orgânicas [2]' },
-                { id: 'theory' as const, label: 'Compêndio', icon: BookOpen, hint: 'Compêndio e Teoria IUPAC [3]' },
-                { id: 'sandbox' as const, label: 'Laboratório', icon: FlaskConical, hint: 'Laboratório Molecular Sandbox [4]' },
+                { id: 'isomeria' as const, label: 'Isomeria', icon: GitFork, hint: 'Praticar Isomeria Plana e Espacial [3]' },
+                { id: 'theory' as const, label: 'Compêndio', icon: BookOpen, hint: 'Compêndio e Teoria IUPAC [4]' },
+                { id: 'sandbox' as const, label: 'Laboratório', icon: FlaskConical, hint: 'Laboratório Molecular Sandbox [5]' },
               ]
             ).map(({ id, label, icon: Icon, hint }, index) => {
               const isActive = activeTab === id;

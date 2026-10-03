@@ -56,6 +56,7 @@ export const MoleculeStudio: React.FC<MoleculeStudioProps> = ({
   onSendToArcade,
 }) => {
   const canvasRef = useRef<SkeletalCanvasHandle | null>(null);
+  const headerRef = useRef<HTMLElement | null>(null);
   const [graph, setGraph] = useState<MolecularGraphData>(initialGraph ?? EMPTY_GRAPH);
   const [canvasState, setCanvasState] = useState<SkeletalCanvasState | null>(null);
   const [showToolbar, setShowToolbar] = useState(true);
@@ -63,6 +64,9 @@ export const MoleculeStudio: React.FC<MoleculeStudioProps> = ({
   const [showStarters, setShowStarters] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  // The header is one row on wide screens and two on narrow ones, so the panels
+  // below it are placed from its measured height rather than a fixed offset.
+  const [panelTop, setPanelTop] = useState(72);
 
   const analysis = useMemo(() => analyzeMolecularGraph(graph), [graph]);
   const isZenMode = !showToolbar && !showName && !showStarters && !showShortcuts;
@@ -75,6 +79,23 @@ export const MoleculeStudio: React.FC<MoleculeStudioProps> = ({
     canvasRef.current?.loadGraph(starter);
     setGraph(starter);
     requestAnimationFrame(() => canvasRef.current?.recenter());
+  }, []);
+
+  useEffect(() => {
+    const header = headerRef.current;
+    if (!header || typeof ResizeObserver === 'undefined') return undefined;
+    const measure = () => setPanelTop(Math.round(header.getBoundingClientRect().bottom) + 10);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(header);
+    return () => observer.disconnect();
+  }, []);
+
+  // Frame the starting molecule; otherwise it sits at the canvas origin, under
+  // the name panel.
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => canvasRef.current?.recenter());
+    return () => cancelAnimationFrame(frame);
   }, []);
 
   // Synchronize native fullscreen changes
@@ -243,15 +264,22 @@ export const MoleculeStudio: React.FC<MoleculeStudioProps> = ({
         className="!rounded-none !border-0 !shadow-none h-full w-full"
       />
 
-      {/* Top Header Bar across viewport: Left Island, Centered Toolbar, Right Island */}
+      {/* Top header: left island, centered toolbar, right island.
+          The strip spans the viewport, so it lets clicks through to the canvas
+          and only the islands take them. pointer-events is inline, not a class:
+          if the host's Tailwind build misses this package, a missing
+          pointer-events-auto leaves every island inheriting "none".
+          Wide screens get one row with the toolbar truly centered; narrower ones
+          move the toolbar to a second row rather than overlapping the islands. */}
       <header
-        className="fixed top-3 inset-x-0 z-50 flex items-start justify-between px-3 sm:px-4 pointer-events-none"
+        ref={headerRef}
+        className="fixed top-3 inset-x-0 z-50 px-3 sm:px-4 grid grid-cols-[auto_auto] justify-between items-start gap-2 xl:grid-cols-[1fr_auto_1fr]"
         style={{ pointerEvents: 'none' }}
       >
         {/* Left Island: Treino [1], Acervo [L], Atalhos [K] */}
         <div
-          className={`studio-floating h-10 px-2 rounded-full flex items-center gap-1 shadow-lg pointer-events-auto transition-all duration-200 ${
-            isZenMode ? 'opacity-0 pointer-events-none scale-95' : 'opacity-100 scale-100'
+          className={`studio-floating col-start-1 row-start-1 justify-self-start h-10 px-2 rounded-full flex items-center gap-1 shadow-lg transition-all duration-200 ${
+            isZenMode ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
           }`}
           style={{ pointerEvents: isZenMode ? 'none' : 'auto' }}
         >
@@ -260,7 +288,6 @@ export const MoleculeStudio: React.FC<MoleculeStudioProps> = ({
               type="button"
               onClick={() => (onNavigateTab ? onNavigateTab('arcade') : onExit?.())}
               title="Voltar ao Treino Arcade [1] ou [Esc]"
-              style={{ pointerEvents: 'auto', cursor: 'pointer' }}
               className="h-7 px-2.5 rounded-full flex items-center gap-1.5 text-xs font-semibold text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-highest)] transition-colors cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />
@@ -275,7 +302,6 @@ export const MoleculeStudio: React.FC<MoleculeStudioProps> = ({
             type="button"
             onClick={() => setShowStarters(v => !v)}
             title="Abrir acervo de moléculas [L]"
-            style={{ pointerEvents: 'auto', cursor: 'pointer' }}
             className={`h-7 px-2.5 rounded-full flex items-center gap-1.5 text-xs font-semibold transition-colors cursor-pointer ${
               showStarters
                 ? 'bg-[var(--md-sys-color-secondary-container)] text-[var(--md-sys-color-on-secondary-container)]'
@@ -291,7 +317,6 @@ export const MoleculeStudio: React.FC<MoleculeStudioProps> = ({
             type="button"
             onClick={() => setShowShortcuts(v => !v)}
             title="Ver atalhos rápidos [K]"
-            style={{ pointerEvents: 'auto', cursor: 'pointer' }}
             className={`h-7 px-2.5 rounded-full flex items-center gap-1.5 text-xs font-semibold transition-colors cursor-pointer ${
               showShortcuts
                 ? 'bg-[var(--md-sys-color-secondary-container)] text-[var(--md-sys-color-on-secondary-container)]'
@@ -306,7 +331,7 @@ export const MoleculeStudio: React.FC<MoleculeStudioProps> = ({
 
         {/* Center Island: FloatingToolbar */}
         <div
-          className="studio-fade pointer-events-auto"
+          className="studio-fade col-span-2 row-start-2 justify-self-center min-w-0 max-w-full xl:col-span-1 xl:col-start-2 xl:row-start-1"
           style={{ pointerEvents: showToolbar ? 'auto' : 'none' }}
           data-hidden={!showToolbar}
         >
@@ -327,7 +352,7 @@ export const MoleculeStudio: React.FC<MoleculeStudioProps> = ({
 
         {/* Right Island: Zen, Fullscreen, Sair */}
         <div
-          className="studio-floating h-10 px-2 rounded-full flex items-center gap-1 shadow-lg pointer-events-auto"
+          className="studio-floating col-start-2 row-start-1 justify-self-end h-10 px-2 rounded-full flex items-center gap-1 shadow-lg xl:col-start-3"
           style={{ pointerEvents: 'auto' }}
         >
           <button
@@ -335,7 +360,6 @@ export const MoleculeStudio: React.FC<MoleculeStudioProps> = ({
             onClick={toggleZenMode}
             title={isZenMode ? 'Restaurar painéis [H]' : 'Ocultar tudo / Modo Zen [H]'}
             aria-label={isZenMode ? 'Restaurar painéis' : 'Ocultar tudo'}
-            style={{ pointerEvents: 'auto', cursor: 'pointer' }}
             className="h-7 px-2.5 rounded-full flex items-center gap-1.5 text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-highest)] transition-colors cursor-pointer"
           >
             {isZenMode ? (
@@ -343,7 +367,7 @@ export const MoleculeStudio: React.FC<MoleculeStudioProps> = ({
             ) : (
               <EyeOff className="w-3.5 h-3.5" />
             )}
-            <span className="hidden md:inline">{isZenMode ? 'Mostrar' : 'Ocultar tudo'}</span>
+            <span className="hidden 2xl:inline">{isZenMode ? 'Mostrar' : 'Ocultar tudo'}</span>
             <kbd className="text-[10px] font-mono opacity-60">H</kbd>
           </button>
 
@@ -352,11 +376,10 @@ export const MoleculeStudio: React.FC<MoleculeStudioProps> = ({
             onClick={toggleFullscreen}
             title={isFullscreen ? 'Sair da tela cheia [F]' : 'Tela cheia [F]'}
             aria-label="Alternar tela cheia"
-            style={{ pointerEvents: 'auto', cursor: 'pointer' }}
             className="h-7 px-2.5 rounded-full flex items-center gap-1.5 text-xs font-semibold text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-highest)] transition-colors cursor-pointer"
           >
             {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-            <span className="hidden md:inline">{isFullscreen ? 'Janela' : 'Tela cheia'}</span>
+            <span className="hidden 2xl:inline">{isFullscreen ? 'Janela' : 'Tela cheia'}</span>
             <kbd className="text-[10px] font-mono opacity-60">F</kbd>
           </button>
 
@@ -366,7 +389,6 @@ export const MoleculeStudio: React.FC<MoleculeStudioProps> = ({
               onClick={onExit}
               title="Sair do laboratório [Esc]"
               aria-label="Sair"
-              style={{ pointerEvents: 'auto', cursor: 'pointer' }}
               className="h-7 px-2 rounded-full flex items-center justify-center text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-error)] hover:bg-[var(--md-sys-color-surface-container-highest)] transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
@@ -379,6 +401,7 @@ export const MoleculeStudio: React.FC<MoleculeStudioProps> = ({
       {showName && (
         <NamePanel
           analysis={analysis}
+          top={panelTop}
           onHide={() => setShowName(false)}
           onSendToArcade={
             onSendToArcade && analysis.isNameable
@@ -390,23 +413,20 @@ export const MoleculeStudio: React.FC<MoleculeStudioProps> = ({
 
       {/* Starters Library Panel */}
       {showStarters && (
-        <StartersPanel onLoad={loadStarter} onHide={() => setShowStarters(false)} />
+        <StartersPanel top={panelTop} onLoad={loadStarter} onHide={() => setShowStarters(false)} />
       )}
 
       {/* Shortcuts Help Panel */}
-      {showShortcuts && <ShortcutsPanel onHide={() => setShowShortcuts(false)} />}
+      {showShortcuts && <ShortcutsPanel top={panelTop} onHide={() => setShowShortcuts(false)} />}
 
-      {/* Restore Dock — Bottom Left for individually dismissed panels */}
-      <div
-        className="fixed bottom-4 left-4 z-40 flex items-center gap-2 flex-wrap max-w-[80vw]"
-        style={{ pointerEvents: 'auto' }}
-      >
+      {/* Restore dock for dismissed panels. Bottom right, stacked above the
+          canvas zoom controls: bottom left is the canvas's tool hint. */}
+      <div className="fixed bottom-16 right-4 z-40 flex flex-col items-end gap-2">
         {isZenMode ? (
           <button
             type="button"
             onClick={toggleZenMode}
             title="Restaurar painéis [H]"
-            style={{ pointerEvents: 'auto', cursor: 'pointer' }}
             className="studio-floating h-9 px-3.5 rounded-full flex items-center gap-2 text-xs font-semibold text-[var(--md-sys-color-primary)] hover:bg-[var(--md-sys-color-surface-container-highest)] shadow-lg transition-colors cursor-pointer animate-fadeIn"
           >
             <Eye className="w-4 h-4" />
@@ -422,7 +442,6 @@ export const MoleculeStudio: React.FC<MoleculeStudioProps> = ({
                 type="button"
                 onClick={onClick}
                 title={title}
-                style={{ pointerEvents: 'auto', cursor: 'pointer' }}
                 className="studio-floating h-8 px-3 rounded-full flex items-center gap-1.5 text-[11px] font-semibold text-[var(--md-sys-color-on-surface-variant)] hover:text-[var(--md-sys-color-on-surface)] hover:bg-[var(--md-sys-color-surface-container-highest)] shadow-md transition-colors cursor-pointer"
               >
                 <Icon className="w-3.5 h-3.5 text-[var(--md-sys-color-primary)]" />

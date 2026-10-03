@@ -1,5 +1,11 @@
 import { create } from 'zustand';
 import confetti from 'canvas-confetti';
+
+function safeConfetti(opts: confetti.Options): void {
+  if (typeof document !== 'undefined') {
+    confetti(opts);
+  }
+}
 import {
   evaluateIUPACName,
   type DifficultyTier,
@@ -30,7 +36,7 @@ import { historyDb } from '../db/historyDb.js';
 import { haptics } from '../utils/haptics.js';
 
 export type InputMode = 'speedrunner' | 'slotBuilder';
-export type ActiveTab = 'arcade' | 'cacar' | 'theory' | 'sandbox';
+export type ActiveTab = 'arcade' | 'cacar' | 'isomeria' | 'theory' | 'sandbox';
 
 export type MonetPaletteId = 'emerald' | 'blue' | 'purple' | 'amber' | 'rose' | 'slate';
 
@@ -151,6 +157,12 @@ export function assembleIUPACFromSlots(slots: SlotBuilderState): string {
   // Suffix
   const sufLoc = slots.suffixLocant.trim();
   const suffix = slots.functionSuffix || 'o';
+  // A consonant-initial suffix keeps the hydride's "o": etanotiol,
+  // propano-1-tiol, metanossulfônico (the s doubles right after that vowel).
+  if (/^[^aeiouáéíóú]/.test(suffix) && mainPart.endsWith('n')) {
+    mainPart += 'o';
+    if (!sufLoc && suffix.startsWith('s')) mainPart += 's';
+  }
   if (sufLoc) {
     mainPart += `-${sufLoc}-${suffix}`;
   } else {
@@ -626,7 +638,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     // Confetti celebration on 100% correct or level up
     if (evalResult.isPerfect) {
-      confetti({
+      safeConfetti({
         particleCount: 85,
         spread: 70,
         origin: { y: 0.65 },
@@ -635,7 +647,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
 
     if (leveledUp) {
-      confetti({
+      safeConfetti({
         particleCount: 130,
         spread: 90,
         origin: { y: 0.5 },
@@ -646,7 +658,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (bonus.chestCracked) {
       shouldShake = true;
       setTimeout(() => set({ screenShake: false }), 350);
-      confetti({
+      safeConfetti({
         particleCount: 160,
         spread: 110,
         startVelocity: 42,
@@ -974,7 +986,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
 
     if (isPerfect) {
-      confetti({
+      safeConfetti({
         particleCount: 85,
         spread: 70,
         origin: { y: 0.65 },
@@ -982,7 +994,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       });
     }
     if (leveledUp) {
-      confetti({
+      safeConfetti({
         particleCount: 130,
         spread: 90,
         origin: { y: 0.5 },
@@ -992,7 +1004,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (bonus.chestCracked) {
       shouldShake = true;
       setTimeout(() => set({ screenShake: false }), 350);
-      confetti({
+      safeConfetti({
         particleCount: 160,
         spread: 110,
         startVelocity: 42,

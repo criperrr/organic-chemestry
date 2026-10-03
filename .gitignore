@@ -12,3 +12,4 @@ tools/audit-output/
 # Estava commitado como gitlink sem .gitmodules, o que quebrava todo clone novo
 # (e com ele o build do Netlify).
 .agents/
+*.tsbuildinfo

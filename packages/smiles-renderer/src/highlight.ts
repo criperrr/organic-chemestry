@@ -1,16 +1,17 @@
 /**
  * Functional group identification and atom highlighting for organic chemistry education.
- * Highlights specific functional groups (carbonyl, nitrogen, halogen, hydroxyl) with
+ * Highlights specific functional groups (carbonyl, nitrogen, halogen, hydroxyl, sulfur) with
  * pedagogical colored halo markers on SmilesDrawer canvas/SVG depictions.
  */
 
-export type HighlightGroup = 'carbonyl' | 'nitrogen' | 'halogen' | 'hydroxyl' | 'none';
+export type HighlightGroup = 'carbonyl' | 'nitrogen' | 'halogen' | 'hydroxyl' | 'sulfur' | 'none';
 
 export const HIGHLIGHT_COLORS: Record<HighlightGroup, string> = {
   carbonyl: 'rgba(239, 68, 68, 0.45)', // Red halo
   nitrogen: 'rgba(59, 130, 246, 0.45)', // Electric blue halo
   halogen: 'rgba(16, 185, 129, 0.45)',  // Emerald green halo
   hydroxyl: 'rgba(6, 182, 212, 0.45)',  // Cyan halo
+  sulfur: 'rgba(245, 158, 11, 0.45)',   // Amber halo, the sulfur atom colour
   none: 'transparent',
 };
 
@@ -167,6 +168,13 @@ export function tagFunctionalGroup(
 
       case 'hydroxyl':
         if (isHydroxylOxygen(node, incomingBond, hasParent)) {
+          shouldHighlight = true;
+        }
+        break;
+
+      case 'sulfur':
+        // -SH, -S-, -S-S- and -SO3H all hinge on the sulfur atom itself.
+        if (elem === 'S') {
           shouldHighlight = true;
         }
         break;

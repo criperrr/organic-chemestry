@@ -52,6 +52,10 @@ export const FUNCTIONAL_GROUPS: PaletteEntry<FunctionalGroupType>[] = [
   { type: '-I', label: '−I', name: 'Iodo (iodo)', group: 'Haletos' },
   { type: '-COCl', label: '−COCl', name: 'Haleto de acila (cloreto)', group: 'Haletos' },
 
+  { type: '-SH', label: '−SH', name: 'Sulfidrila — tiol (mercaptana)', group: 'Sulfuradas' },
+  { type: '-SCH3', label: '−SCH₃', name: 'Metilsulfanil — tioéter (sulfeto)', group: 'Sulfuradas' },
+  { type: '-SO3H', label: '−SO₃H', name: 'Sulfônico — ácido sulfônico', group: 'Sulfuradas' },
+
   { type: '-CH3', label: '−CH₃', name: 'Metil', group: 'Radicais' },
   { type: '-CH2CH3', label: '−C₂H₅', name: 'Etil', group: 'Radicais' },
   { type: '-CH2CH2CH3', label: '−C₃H₇', name: 'Propil', group: 'Radicais' },

@@ -1,0 +1,8 @@
+appId: com.android.chrome
+---
+- tapOn:
+    point: "78%,14%"
+- scroll
+- assertVisible: ".*PREFIXO DE CLASSE.*"
+- tapOn: ".*ciclo-.*"
+- takeScreenshot: "maestro_02_slots_assembled"

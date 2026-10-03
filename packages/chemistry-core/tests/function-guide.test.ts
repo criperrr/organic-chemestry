@@ -6,20 +6,34 @@ import {
   gradeFunctionHunt,
 } from '../src/function-guide.js';
 import { analyzeMolecularGraph, createGraphFromSMILES } from '../src/graph-namer.js';
-import { OrganicFunctionSchema } from '../src/types.js';
+import { IUPAC_PRIORITY_ORDER, OrganicFunctionSchema } from '../src/types.js';
 
 describe('Function nomenclature guide', () => {
-  it('covers all 16 canonical functions, ordered by IUPAC seniority', () => {
+  it('covers every taught function, ordered by IUPAC seniority', () => {
     const ids = OrganicFunctionSchema.options;
     expect(Object.keys(FUNCTION_GUIDE).sort()).toEqual([...ids].sort());
-    expect(FUNCTIONS_BY_PRIORITY).toHaveLength(16);
+    expect(FUNCTIONS_BY_PRIORITY).toHaveLength(20);
     expect(FUNCTIONS_BY_PRIORITY[0].id).toBe('acido_carboxilico');
-    expect(FUNCTIONS_BY_PRIORITY[15].id).toBe('hidrocarboneto');
+    expect(FUNCTIONS_BY_PRIORITY[FUNCTIONS_BY_PRIORITY.length - 1].id).toBe('hidrocarboneto');
     for (let i = 1; i < FUNCTIONS_BY_PRIORITY.length; i++) {
       expect(FUNCTIONS_BY_PRIORITY[i - 1].priority).toBeGreaterThan(
         FUNCTIONS_BY_PRIORITY[i].priority
       );
     }
+    // The guide and the engine must agree on seniority, or the hunt teaches
+    // one order and the namer applies another.
+    for (const guide of FUNCTIONS_BY_PRIORITY) {
+      expect(guide.priority, guide.id).toBe(IUPAC_PRIORITY_ORDER[guide.id]);
+    }
+  });
+
+  it('places the sulfur functions where IUPAC P-41 puts them', () => {
+    const rank = (id: string) => FUNCTIONS_BY_PRIORITY.findIndex(g => g.id === id);
+    expect(rank('acido_sulfonico')).toBe(rank('acido_carboxilico') + 1);
+    expect(rank('tiol')).toBe(rank('fenol') + 1);
+    expect(rank('amina')).toBe(rank('tiol') + 1);
+    expect(rank('tioeter')).toBe(rank('eter') + 1);
+    expect(rank('dissulfeto')).toBe(rank('tioeter') + 1);
   });
 
   it('every worked example really is an instance of its own function', () => {
@@ -38,6 +52,12 @@ describe('Function nomenclature guide', () => {
     expect(checkNomenclatureAnswer('acido_carboxilico', 'ácido -oico').correct).toBe(true);
     expect(checkNomenclatureAnswer('ester', 'oato de ila').correct).toBe(true);
     expect(checkNomenclatureAnswer('nitrocomposto', 'nitro').correct).toBe(true);
+    expect(checkNomenclatureAnswer('tiol', '-tiol').correct).toBe(true);
+    expect(checkNomenclatureAnswer('acido_sulfonico', 'ácido -sulfônico').correct).toBe(true);
+    expect(checkNomenclatureAnswer('tioeter', 'sulfanil').correct).toBe(true);
+    expect(checkNomenclatureAnswer('dissulfeto', 'dissulfeto').correct).toBe(true);
+    // "-ol" is the alcohol: the S is exactly what the student must notice.
+    expect(checkNomenclatureAnswer('tiol', '-ol').correct).toBe(false);
   });
 
   it('rejects the wrong suffix and flags a near miss', () => {

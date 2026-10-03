@@ -308,6 +308,18 @@ describe('Functional Group Identification and Tagging', () => {
     expect(tagFunctionalGroup(alkane, 'halogen')).toBeNull();
   });
 
+  it('should identify the sulfur of thiols, sulfides, disulfides and sulfonic acids', () => {
+    const thiol = tagFunctionalGroup(parseTreeSync('CCS'), 'sulfur');
+    expect(thiol?.count).toBe(1);
+    expect(thiol?.color).toBe(HIGHLIGHT_COLORS.sulfur);
+
+    expect(tagFunctionalGroup(parseTreeSync('CSC'), 'sulfur')?.count).toBe(1);
+    expect(tagFunctionalGroup(parseTreeSync('CSSC'), 'sulfur')?.count).toBe(2);
+    expect(tagFunctionalGroup(parseTreeSync('CS(=O)(=O)O'), 'sulfur')?.count).toBe(1);
+    // An alcohol has no sulfur to light up.
+    expect(tagFunctionalGroup(parseTreeSync('CCO'), 'sulfur')).toBeNull();
+  });
+
   it('should distinguish hydroxyl groups (-OH) from ethers (-O-)', () => {
     const ethanol = parseTreeSync('CCO');
     const resEthanol = tagFunctionalGroup(ethanol, 'hydroxyl');

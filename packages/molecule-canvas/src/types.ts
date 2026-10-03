@@ -52,6 +52,8 @@ export type FunctionalGroupType =
   | '-NHCH3'
   | '-N(CH3)2'
   | '-SH'
+  | '-SCH3'
+  | '-SO3H'
   | '-OC2H5'
   | '-CH=CH2'
   | '-C#CH'

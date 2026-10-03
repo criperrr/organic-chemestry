@@ -154,6 +154,8 @@ const STANDARD_VALENCE: Record<AtomElement, number> = {
   S: 2,
   P: 3,
   H: 1,
+  Na: 0,
+  K: 0,
 };
 
 export function calculateValences(graph: MolecularGraph): void {
@@ -206,6 +208,9 @@ export function calculateValences(graph: MolecularGraph): void {
       target = sigmaValence > 3 ? 5 : 3;
     } else if (atom.element === 'H') {
       target = 1;
+    } else if (atom.element === 'Na' || atom.element === 'K') {
+      // Only ever a counter-ion here: it carries no hydrogen.
+      target = 0;
     }
 
     if (atom.element === 'H') {
@@ -608,6 +613,91 @@ export function perceiveRingsAndAromaticity(graph: MolecularGraph): Ring[] {
 // 4. Detection of 16 Canonical Functional Groups
 // ============================================================================
 
+/**
+ * What a sulfur atom is doing in the molecule.
+ *
+ * The engine used to have no answer at all, and the naming pipeline simply
+ * skipped any branch rooted at S: methanethiol was named "metano", cysteine lost
+ * its -SH, and both were reported as nameable. Every sulfur now gets a role, and
+ * the ones outside the taught functions ("unsupported") make the analysis refuse
+ * out loud instead of naming a different molecule.
+ */
+export type SulfurRole =
+  | 'tiol'
+  | 'tioeter'
+  | 'dissulfeto'
+  | 'acido_sulfonico'
+  | 'ring'
+  | 'unsupported';
+
+export function classifySulfur(graph: MolecularGraph, sulfurId: string): SulfurRole {
+  const atom = graph.atoms.get(sulfurId);
+  if (!atom || atom.element !== 'S') return 'unsupported';
+
+  const heavy = graph
+    .getNeighbors(sulfurId)
+    .filter(n => graph.atoms.get(n.neighborId)?.element !== 'H');
+  const elementOf = (n: NeighborEdge) => graph.atoms.get(n.neighborId)?.element;
+
+  if (atom.inRing) {
+    // Thiophene, thiolane: a skeleton atom of a retained heterocycle. An
+    // oxidised ring sulfur (sulfolane) is a different parent the engine lacks.
+    const plain = atom.charge === 0 && heavy.length === 2 && heavy.every(n => n.order === 1);
+    return plain ? 'ring' : 'unsupported';
+  }
+  if (atom.charge !== 0) return 'unsupported';
+
+  // A carbon that is itself an acyl or thioacyl carbon makes this a thioester
+  // or thioacid, which no high-school curriculum names.
+  const isAcylCarbon = (carbonId: string) =>
+    graph
+      .getNeighbors(carbonId)
+      .some(
+        n =>
+          n.neighborId !== sulfurId &&
+          n.order === 2 &&
+          ['O', 'S'].includes(graph.atoms.get(n.neighborId)?.element ?? '')
+      );
+
+  const doubleOxygens = heavy.filter(n => n.order === 2 && elementOf(n) === 'O');
+  if (doubleOxygens.length === 2 && heavy.length === 4) {
+    const singles = heavy.filter(n => n.order === 1);
+    const carbon = singles.filter(n => elementOf(n) === 'C');
+    const oxygen = singles.filter(n => elementOf(n) === 'O');
+    if (carbon.length !== 1 || oxygen.length !== 1) return 'unsupported';
+    if (isAcylCarbon(carbon[0].neighborId)) return 'unsupported';
+    // -SO3H or -SO3⁻; an O carrying a carbon is a sulfonate ester instead.
+    const oxygenCarriesMore = graph
+      .getNeighbors(oxygen[0].neighborId)
+      .some(n => n.neighborId !== sulfurId && graph.atoms.get(n.neighborId)?.element !== 'H');
+    return oxygenCarriesMore ? 'unsupported' : 'acido_sulfonico';
+  }
+
+  if (heavy.some(n => n.order !== 1)) return 'unsupported';
+  const carbons = heavy.filter(n => elementOf(n) === 'C');
+  if (carbons.some(n => isAcylCarbon(n.neighborId))) return 'unsupported';
+
+  if (heavy.length === 1 && carbons.length === 1) return 'tiol';
+  if (heavy.length === 2 && carbons.length === 2) return 'tioeter';
+  if (heavy.length === 2 && carbons.length === 1) {
+    const partner = heavy.find(n => elementOf(n) === 'S');
+    if (!partner) return 'unsupported';
+    const partnerHeavy = graph
+      .getNeighbors(partner.neighborId)
+      .filter(n => graph.atoms.get(n.neighborId)?.element !== 'H');
+    const partnerAtom = graph.atoms.get(partner.neighborId);
+    const partnerIsPlain =
+      partnerAtom?.charge === 0 &&
+      !partnerAtom.inRing &&
+      partnerHeavy.length === 2 &&
+      partnerHeavy.every(n => n.order === 1) &&
+      partnerHeavy.filter(n => elementOf(n) === 'C').length === 1 &&
+      partnerHeavy.every(n => elementOf(n) !== 'C' || !isAcylCarbon(n.neighborId));
+    return partnerIsPlain ? 'dissulfeto' : 'unsupported';
+  }
+  return 'unsupported';
+}
+
 export function detectFunctionalGroups(
   graph: MolecularGraph,
   rings: Ring[] = []
@@ -949,7 +1039,57 @@ export function detectFunctionalGroups(
     }
   }
 
-  // 8. F16: hidrocarboneto: fallback if no other hetero functions or strictly C and H
+  // 8. Sulfur functions: -SO3H, -SH, C-S-C, C-S-S-C
+  const pairedDisulfides = new Set<string>();
+  for (const atom of graph.atoms.values()) {
+    if (atom.element !== 'S') continue;
+    const role = classifySulfur(graph, atom.id);
+    const carbonIds = graph
+      .getNeighbors(atom.id)
+      .filter(n => graph.atoms.get(n.neighborId)?.element === 'C')
+      .map(n => n.neighborId);
+
+    if (role === 'acido_sulfonico') {
+      const oxygenIds = graph
+        .getNeighbors(atom.id)
+        .filter(n => graph.atoms.get(n.neighborId)?.element === 'O')
+        .map(n => n.neighborId);
+      detected.push({
+        type: 'acido_sulfonico',
+        carbonId: carbonIds[0],
+        atomIds: [atom.id, ...oxygenIds],
+        priority: IUPAC_PRIORITY_ORDER.acido_sulfonico,
+      });
+    } else if (role === 'tiol') {
+      detected.push({
+        type: 'tiol',
+        carbonId: carbonIds[0],
+        atomIds: [atom.id, carbonIds[0]],
+        priority: IUPAC_PRIORITY_ORDER.tiol,
+      });
+    } else if (role === 'tioeter') {
+      detected.push({
+        type: 'tioeter',
+        carbonId: carbonIds[0],
+        atomIds: [atom.id, ...carbonIds],
+        priority: IUPAC_PRIORITY_ORDER.tioeter,
+        extra: { c1: carbonIds[0], c2: carbonIds[1] },
+      });
+    } else if (role === 'dissulfeto' && !pairedDisulfides.has(atom.id)) {
+      const partnerId = graph
+        .getNeighbors(atom.id)
+        .find(n => graph.atoms.get(n.neighborId)?.element === 'S')!.neighborId;
+      pairedDisulfides.add(atom.id).add(partnerId);
+      detected.push({
+        type: 'dissulfeto',
+        carbonId: carbonIds[0],
+        atomIds: [atom.id, partnerId],
+        priority: IUPAC_PRIORITY_ORDER.dissulfeto,
+      });
+    }
+  }
+
+  // 9. F16: hidrocarboneto: fallback if no other hetero functions or strictly C and H
   if (detected.length === 0) {
     detected.push({
       type: 'hidrocarboneto',
@@ -1134,12 +1274,14 @@ function buildFusedPerimeter(
 /**
  * Functions whose principal characteristic group is expressed as a SUFFIX.
  *
- * Ethers, alkyl halides, nitro compounds and hydrocarbons never generate a
- * suffix — they are *always* cited as prefixes — so they must neither steer
- * parent-chain selection nor locant minimisation (IUPAC P-41 / P-14.4).
+ * Ethers, sulfides, disulfides, alkyl halides, nitro compounds and
+ * hydrocarbons never generate a suffix — they are *always* cited as prefixes —
+ * so they must neither steer parent-chain selection nor locant minimisation
+ * (IUPAC P-41 / P-14.4).
  */
 export const SUFFIX_EXPRESSED_FUNCTIONS: ReadonlySet<OrganicFunction> = new Set<OrganicFunction>([
   'acido_carboxilico',
+  'acido_sulfonico',
   'anidrido',
   'ester',
   'haleto_acila',
@@ -1150,6 +1292,7 @@ export const SUFFIX_EXPRESSED_FUNCTIONS: ReadonlySet<OrganicFunction> = new Set<
   'alcool',
   'enol',
   'fenol',
+  'tiol',
   'amina',
 ]);
 
@@ -1953,6 +2096,71 @@ function nameRingRadical(
   };
 }
 
+/**
+ * Prefix forms of the sulfur groups (IUPAC 2013, P-63.1.5 / P-65.3.2):
+ * -SH "sulfanil", -S-R "(R-sulfanil)", -S-S-R "(R-dissulfanil)", -SO3H "sulfo".
+ */
+export const SULFUR_PREFIX = {
+  thiol: 'sulfanil',
+  sulfide: 'sulfanil',
+  disulfide: 'dissulfanil',
+  sulfo: 'sulfo',
+} as const;
+
+function nameSulfurBranch(
+  graph: MolecularGraph,
+  rootId: string,
+  attachedTo: string,
+  rings: Ring[],
+  depth: number
+): ClassifiedSubstituent {
+  const role = classifySulfur(graph, rootId);
+  const refuse = () =>
+    new UnnameableBranchError(
+      [rootId],
+      'Grupo com enxofre fora do que eu sei nomear (só tiol, tioéter, dissulfeto e ácido sulfônico).'
+    );
+
+  if (role === 'acido_sulfonico') {
+    const p = SULFUR_PREFIX.sulfo;
+    return { locant: 0, name: p, sortKey: p, isComplex: false };
+  }
+  if (role === 'tiol') {
+    const p = SULFUR_PREFIX.thiol;
+    return { locant: 0, name: p, sortKey: p, isComplex: false };
+  }
+
+  // -S-R and -S-S-R: name R as a radical, seen from the sulfur it hangs off.
+  const radicalThrough = (fromId: string, excludeId: string): string => {
+    const carbon = graph
+      .getNeighbors(fromId)
+      .find(n => n.neighborId !== excludeId && graph.atoms.get(n.neighborId)?.element === 'C');
+    if (!carbon) throw refuse();
+    const named = nameBranch(graph, carbon.neighborId, fromId, rings, depth + 1);
+    if (!named) throw refuse();
+    // A radical with locants of its own keeps its marks, or "2-cloroetil"
+    // would read as a locant of the sulfanyl group.
+    return named.isComplex ? `(${named.sortKey})` : named.sortKey;
+  };
+  const enclose = (inner: string) => (inner.includes('(') ? `[${inner}]` : `(${inner})`);
+
+  if (role === 'tioeter') {
+    const inner = `${radicalThrough(rootId, attachedTo)}${SULFUR_PREFIX.sulfide}`;
+    return { locant: 0, name: enclose(inner), sortKey: inner, isComplex: true };
+  }
+  if (role === 'dissulfeto') {
+    const partner = graph
+      .getNeighbors(rootId)
+      .find(n => n.neighborId !== attachedTo && graph.atoms.get(n.neighborId)?.element === 'S');
+    // Reached through the carbon, the far sulfur carries the radical; reached
+    // through the other sulfur (never happens from a carbon parent) is invalid.
+    if (!partner) throw refuse();
+    const inner = `${radicalThrough(partner.neighborId, rootId)}${SULFUR_PREFIX.disulfide}`;
+    return { locant: 0, name: enclose(inner), sortKey: inner, isComplex: true };
+  }
+  throw refuse();
+}
+
 function nameBranch(
   graph: MolecularGraph,
   rootId: string,
@@ -2098,6 +2306,10 @@ function nameBranch(
       .sort();
     const inner = parts.length === 2 && parts[0] === parts[1] ? `di${parts[0]}` : parts.join('');
     return { locant: 0, name: `(${inner}amino)`, sortKey: `${inner}amino`, isComplex: true };
+  }
+
+  if (rootAtom.element === 'S') {
+    return nameSulfurBranch(graph, rootId, attachedTo, rings, depth);
   }
 
   if (rootAtom.element !== 'C') return null;
@@ -2399,10 +2611,17 @@ function formatGroupedSubstituents(
     const grp = groups.get(name)!;
     grp.locants.sort((a, b) => locantRank(a) - locantRank(b));
     const count = grp.locants.length;
+    const locStr = omitLocants ? '' : `${grp.locants.join(',')}-`;
+    // Two -SH groups cannot be "dissulfanil": the Novo Acordo doubling makes
+    // that the -S-S- prefix. "bis(sulfanil)" is the unambiguous form.
+    if (count > 1 && name === SULFUR_PREFIX.thiol) {
+      parts.push(`${locStr}${COMPLEX_MULTIPLIERS[count] ?? `${count}x-`}(${name})`);
+      continue;
+    }
     const table = grp.isComplex ? COMPLEX_MULTIPLIERS : MULTIPLIERS;
     const mult = count > 1 ? table[count] ?? `${count}x-` : '';
-    const locStr = omitLocants ? '' : `${grp.locants.join(',')}-`;
-    parts.push(`${locStr}${mult}${name}`);
+    // "dissulfo", but never "dissec-butil": italic markers are not word parts.
+    parts.push(`${locStr}${name.startsWith('sulf') ? doubleSOrR(mult, name) : mult + name}`);
   }
 
   return parts.join('-');
@@ -2414,7 +2633,9 @@ function joinWithNovoAcordo(prefix: string, stem: string): string {
     // Never glue a locant or a closing parenthesis straight onto the stem.
     if (/^\d/.test(stem)) return `${prefix}-${stem}`;
   }
-  if (stem.startsWith('h') || stem.startsWith('H')) {
+  // The Novo Acordo hyphen before "h" joins two word parts; a closing bracket
+  // already separates them, so "1-(metilsulfanil)hexano" takes none.
+  if ((stem.startsWith('h') || stem.startsWith('H')) && !/[)\]]$/.test(prefix)) {
     return `${prefix}-${stem}`;
   }
   const last = prefix.slice(-1).toLowerCase();
@@ -2425,8 +2646,22 @@ function joinWithNovoAcordo(prefix: string, stem: string): string {
   return `${prefix}${stem}`;
 }
 
+/**
+ * Joins two word parts under Base XVI of the Novo Acordo: a vowel followed by
+ * "s" or "r" and another vowel doubles the consonant, so metano + sulfônico is
+ * "metanossulfônico" and di + sulfônico is "dissulfônico".
+ */
+function doubleSOrR(left: string, right: string): string {
+  if (/[aeiouáéíóú]$/.test(left) && /^[sr][aeiouáéíóú]/.test(right)) {
+    return `${left}${right[0]}${right}`;
+  }
+  return `${left}${right}`;
+}
+
 /** Suffix morpheme for each suffix-expressed function. */
 const FUNCTION_SUFFIX: Partial<Record<OrganicFunction, string>> = {
+  acido_sulfonico: 'sulfônico',
+  tiol: 'tiol',
   alcool: 'ol',
   enol: 'ol',
   fenol: 'ol',
@@ -2582,7 +2817,7 @@ function assembleParent(input: AssemblyInput): { name2013: string; name1993: str
   // "piridin" + "o" + "diamina" produced "piridinodiamina"; the retained name
   // keeps its own ending and takes the locants directly: piridina-2,5-diamina.
   if (heterocycleName && suffixCount > 1) {
-    const body = `${heterocycleName}-${suffixLocants.join(',')}-${suffixMult}${suffixBase}`;
+    const body = `${heterocycleName}-${suffixLocants.join(',')}-${doubleSOrR(suffixMult, suffixBase)}`;
     const full = joinWithNovoAcordo(prefixStr, body);
     return { name2013: full, name1993: full };
   }
@@ -2595,19 +2830,32 @@ function assembleParent(input: AssemblyInput): { name2013: string; name1993: str
       name1993: joinWithNovoAcordo(prefixStr, core),
     };
   }
-  if (suffixCount > 1) base2013 += 'o';
+  // The hydride keeps its final "o" before a consonant — a multiplier
+  // (etanodiol) or a consonant-initial suffix (etanotiol, propano-1-tiol,
+  // metanossulfônico). A retained heterocycle name already ends in a vowel.
+  const suffixWord = doubleSOrR(suffixMult, suffixBase);
+  const linkWithO = (stem: string) =>
+    /n$/.test(stem) && (suffixCount > 1 || !/^[aeiouáéíóú]/.test(suffixBase));
+  if (linkWithO(base2013)) base2013 += 'o';
   if (writeSuffixLocants) base2013 += `-${suffixLocants.join(',')}-`;
-  base2013 += suffixMult + suffixBase;
+  base2013 = doubleSOrR(base2013, suffixWord);
   const name2013 = joinWithNovoAcordo(prefixStr, base2013);
 
   // --- 1993 / classic Brazilian style: all locants up front ---
   let base1993 = core + buildInfix(false);
-  if (suffixCount > 1) base1993 += 'o';
-  base1993 += suffixMult + suffixBase;
+  if (linkWithO(base1993)) base1993 += 'o';
+  // With both an unsaturation and a suffix to locate, the old style still
+  // keeps them apart: "2-propen-1-ol". Pooling them in front gave
+  // "1,2-propenol", which no longer says which locant belongs to which.
+  const splitLocants =
+    writeUnsatLocants && writeSuffixLocants && eneLocants.length + yneLocants.length > 0;
+  base1993 = splitLocants
+    ? `${base1993}-${suffixLocants.join(',')}-${suffixWord}`
+    : doubleSOrR(base1993, suffixWord);
 
   const frontLocants: number[] = [];
   if (writeUnsatLocants) frontLocants.push(...eneLocants, ...yneLocants);
-  if (writeSuffixLocants) frontLocants.push(...suffixLocants);
+  if (writeSuffixLocants && !splitLocants) frontLocants.push(...suffixLocants);
   frontLocants.sort((a, b) => a - b);
 
   let name1993: string;
@@ -3092,6 +3340,26 @@ function assembleParentName(
     return { name2013, name1993 };
   }
 
+  // Sulfonic acid: "ácido …sulfônico"; its anion is "…sulfonato", the way a
+  // carboxylate is "…oato" — calling the detergent anion an acid states the
+  // wrong species.
+  if (primaryFunction === 'acido_sulfonico') {
+    const isSulfonate =
+      suffixOccurrences.length > 0 &&
+      suffixOccurrences.every(occ =>
+        occ.atomIds.some(id => {
+          const a = graph.atoms.get(id);
+          return a?.element === 'O' && a.charge === -1;
+        })
+      );
+    const { name2013, name1993 } = base('acido_sulfonico');
+    if (isSulfonate) {
+      const anion = (name: string) => name.replace(/sulfônico$/, 'sulfonato');
+      return { name2013: anion(name2013), name1993: anion(name1993) };
+    }
+    return { name2013: `ácido ${name2013}`, name1993: `ácido ${name1993}` };
+  }
+
   // Carboxylic acid: "ácido …oico"
   if (primaryFunction === 'acido_carboxilico') {
     const { name2013, name1993 } = base('acido_carboxilico');
@@ -3186,7 +3454,7 @@ function assembleParentName(
 // ============================================================================
 
 const ATOMIC_NUMBERS: Record<string, number> = {
-  H: 1, C: 6, N: 7, O: 8, F: 9, P: 15, S: 16, Cl: 17, Br: 35, I: 53,
+  H: 1, C: 6, N: 7, O: 8, F: 9, Na: 11, P: 15, S: 16, Cl: 17, K: 19, Br: 35, I: 53,
 };
 
 /**
@@ -3541,6 +3809,14 @@ export function createGraphFromSMILES(smiles: string): MolecularGraph {
       i++;
       continue;
     }
+    // Fragment separator: the next atom starts a new, unbonded component
+    // (the Na⁺ of "…S(=O)(=O)[O-].[Na+]").
+    if (ch === '.') {
+      currentAtomId = null;
+      pendingBondOrder = 1;
+      i++;
+      continue;
+    }
     if (ch === '=') {
       pendingBondOrder = 2;
       i++;
@@ -3607,14 +3883,14 @@ export function createGraphFromSMILES(smiles: string): MolecularGraph {
       let aromatic = false;
       // Two-letter reads are only real for Cl and Br; "nH" is an aromatic n
       // followed by its hydrogen count, and "CH" is a C followed by hers.
-      if (symbol.length === 2 && symbol !== 'Cl' && symbol !== 'Br') {
+      if (symbol.length === 2 && !['Cl', 'Br', 'Na'].includes(symbol)) {
         symbol = symbol[0];
       }
       if (/^[cnosp]$/.test(symbol)) {
         aromatic = true;
         symbol = symbol.toUpperCase();
       }
-      if (!['C', 'N', 'O', 'F', 'Cl', 'Br', 'I', 'S', 'P', 'H'].includes(symbol)) {
+      if (!['C', 'N', 'O', 'F', 'Cl', 'Br', 'I', 'S', 'P', 'H', 'Na', 'K'].includes(symbol)) {
         throw new Error(`SMILES inválido: elemento "${symbol}" não suportado.`);
       }
       const element = symbol as AtomElement;
@@ -3751,7 +4027,7 @@ export interface NamingStep {
  * instead of throwing.
  */
 export interface GraphProblem {
-  code: 'empty' | 'no_carbon' | 'disconnected' | 'valence' | 'unsupported_ring';
+  code: 'empty' | 'no_carbon' | 'disconnected' | 'valence' | 'unsupported_ring' | 'unsupported_group';
   message: string;
   atomIds?: string[];
 }
@@ -3787,7 +4063,63 @@ const FUNCTION_LABEL_PTBR: Record<OrganicFunction, string> = {
   haleto_alquila: 'Haleto de alquila',
   haleto_acila: 'Haleto de acila',
   anidrido: 'Anidrido',
+  tiol: 'Tiol',
+  tioeter: 'Tioéter',
+  dissulfeto: 'Dissulfeto',
+  acido_sulfonico: 'Ácido sulfônico',
 };
+
+const COUNTER_ION_NAMES: Partial<Record<AtomElement, string>> = { Na: 'sódio', K: 'potássio' };
+
+/** Unbonded alkali cations: the counter-ions of a salt. */
+export function findCounterIons(graph: MolecularGraph): AtomNode[] {
+  return Array.from(graph.atoms.values()).filter(
+    a => COUNTER_ION_NAMES[a.element] !== undefined && graph.getNeighbors(a.id).length === 0
+  );
+}
+
+/**
+ * Splits a salt into its organic ion and its counter-ions, and says how the
+ * counter-ion reads in the name. Anything but a single kind of cation exactly
+ * balancing the anion's charge is reported instead of named.
+ */
+function separateCounterIons(graph: MolecularGraph): {
+  organic: MolecularGraph;
+  cationName: string | null;
+  problem: GraphProblem | null;
+} {
+  const cations = findCounterIons(graph);
+  if (cations.length === 0) return { organic: graph, cationName: null, problem: null };
+
+  const cationIds = new Set(cations.map(a => a.id));
+  const data = graph.toData();
+  const organic = new MolecularGraph({
+    atoms: data.atoms.filter(a => !cationIds.has(a.id)),
+    bonds: data.bonds,
+  });
+  const anionCharge = Array.from(organic.atoms.values()).reduce((sum, a) => sum + a.charge, 0);
+  const kinds = new Set(cations.map(a => a.element));
+  const balanced =
+    kinds.size === 1 && cations.every(a => a.charge === 1) && anionCharge === -cations.length;
+  const cationName = COUNTER_ION_NAMES[cations[0].element]!;
+  return {
+    organic,
+    cationName: cations.length === 1 ? cationName : doubleSOrR('di', cationName),
+    problem: balanced
+      ? null
+      : {
+          code: 'unsupported_group',
+          message: 'As cargas do sal não se equilibram (um cátion para cada ânion). Confira os íons.',
+          atomIds: cations.map(a => a.id),
+        },
+  };
+}
+
+/** "metanossulfonato" + "sódio" -> "metanossulfonato de sódio"; null if the name is not an anion. */
+function withCounterIon(name: string, cationName: string | null): string | null {
+  if (!cationName || !name) return name;
+  return /ato$/.test(name) ? `${name} de ${cationName}` : null;
+}
 
 /**
  * Detects structural issues that would make the drawing chemically impossible.
@@ -3808,9 +4140,13 @@ export function validateMolecularGraph(graph: MolecularGraph): GraphProblem[] {
     });
   }
 
-  // Connectivity: a molecule must be a single fragment.
-  const visited = new Set<string>([atoms[0].id]);
-  const queue = [atoms[0].id];
+  // Connectivity: a molecule must be a single fragment. A lone Na⁺/K⁺ is the
+  // counter-ion of a salt ("…sulfonato de sódio"), not a stray atom.
+  const counterIons = new Set(findCounterIons(graph).map(a => a.id));
+  const molecular = atoms.filter(a => !counterIons.has(a.id));
+  if (molecular.length === 0) return problems;
+  const visited = new Set<string>([molecular[0].id, ...counterIons]);
+  const queue = [molecular[0].id];
   while (queue.length > 0) {
     const current = queue.shift()!;
     for (const n of graph.getNeighbors(current)) {
@@ -3830,7 +4166,7 @@ export function validateMolecularGraph(graph: MolecularGraph): GraphProblem[] {
 
   // Valence saturation
   const maxValence: Partial<Record<string, number>> = {
-    C: 4, N: 4, O: 2, F: 1, Cl: 1, Br: 1, I: 1, H: 1, S: 6, P: 5,
+    C: 4, N: 4, O: 2, F: 1, Cl: 1, Br: 1, I: 1, H: 1, S: 6, P: 5, Na: 0, K: 0,
   };
   const overloaded: string[] = [];
   for (const atom of atoms) {
@@ -3994,17 +4330,21 @@ const EMPTY_ANALYSIS: MolecularGraphAnalysis = {
 export function analyzeMolecularGraph(
   input: MolecularGraph | MolecularGraphData
 ): MolecularGraphAnalysis {
-  const graph = input instanceof MolecularGraph ? input.clone() : new MolecularGraph(input);
+  const full = input instanceof MolecularGraph ? input.clone() : new MolecularGraph(input);
 
-  const problems = validateMolecularGraph(graph);
+  const problems = validateMolecularGraph(full);
   const blocking = problems.some(p => p.code === 'empty' || p.code === 'no_carbon');
   if (blocking) {
     return { ...EMPTY_ANALYSIS, problems };
   }
 
   try {
+    calculateValences(full);
+    const formula = computeMolecularFormula(full);
+    // A salt is named from its organic ion; the counter-ion joins at the end.
+    const { organic: graph, cationName, problem: saltProblem } = separateCounterIons(full);
+    if (saltProblem) problems.push(saltProblem);
     calculateValences(graph);
-    const formula = computeMolecularFormula(graph);
     const rings = perceiveRingsAndAromaticity(graph);
     const detected = detectFunctionalGroups(graph, rings);
     const primaryFunction = selectPrimaryFunction(detected);
@@ -4089,6 +4429,21 @@ export function analyzeMolecularGraph(
       }
     }
 
+    // Sulfur in any shape outside the taught functions — thioesters,
+    // sulfoxides, sulfones, C=S, sulfonamides. Naming the rest of the molecule
+    // and leaving the sulfur out is exactly the silent failure this replaces.
+    const strangeSulfur = Array.from(graph.atoms.values()).filter(
+      a => a.element === 'S' && classifySulfur(graph, a.id) === 'unsupported'
+    );
+    if (strangeSulfur.length > 0) {
+      problems.push({
+        code: 'unsupported_group',
+        message:
+          'Este grupo com enxofre está fora do que eu sei nomear (só tiol, tioéter, dissulfeto e ácido sulfônico). Prefiro não dar um nome do que dar um errado.',
+        atomIds: strangeSulfur.map(a => a.id),
+      });
+    }
+
     const parentSet = new Set(parent.atomIds);
     const suffixOccurrences = detected.filter(
       d =>
@@ -4119,7 +4474,10 @@ export function analyzeMolecularGraph(
         // The anhydride assembler builds its name from the two acyl halves and
         // never consults this list, so a fused ring it *can* handle (phthalic)
         // must not be turned into a refusal here.
-        if (primaryFunction !== 'anidrido') {
+        const alreadyReported = problems.some(p =>
+          err.atomIds.every(id => p.atomIds?.includes(id))
+        );
+        if (primaryFunction !== 'anidrido' && !alreadyReported) {
           problems.push({ code: 'unsupported_ring', message: err.message, atomIds: err.atomIds });
         }
         substituents = [];
@@ -4147,6 +4505,20 @@ export function analyzeMolecularGraph(
         ({ name2013, name1993 } = { name2013: '', name1993: '' });
       } else {
         throw err;
+      }
+    }
+
+    if (cationName) {
+      const salt2013 = withCounterIon(name2013, cationName);
+      const salt1993 = withCounterIon(name1993, cationName);
+      if (salt2013 === null || salt1993 === null) {
+        problems.push({
+          code: 'unsupported_group',
+          message: 'Há um cátion (Na⁺/K⁺) mas nenhum ânion orgânico (…ato) para formar o sal.',
+        });
+      } else {
+        name2013 = salt2013;
+        name1993 = salt1993;
       }
     }
 
@@ -4256,7 +4628,7 @@ export function analyzeMolecularGraph(
       iupacName2013: name2013,
       iupacName1993: name1993,
       formula,
-      smiles: molecularGraphToSMILES(graph),
+      smiles: molecularGraphToSMILES(full),
       primaryFunction,
       secondaryFunctions,
       isNameable: problems.length === 0,

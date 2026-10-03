@@ -25,6 +25,10 @@ export const FUNCTION_PT_BR_NAMES: Record<OrganicFunction, string> = {
   haleto_alquila: 'Haleto de Alquila',
   haleto_acila: 'Haleto de Acila',
   anidrido: 'Anidrido de Ácido',
+  tiol: 'Tiol',
+  tioeter: 'Tioéter',
+  dissulfeto: 'Dissulfeto',
+  acido_sulfonico: 'Ácido Sulfônico',
 };
 
 export const COMMON_SYNONYMS: Record<string, string> = {
@@ -306,7 +310,7 @@ export const COMMON_SYNONYMS: Record<string, string> = {
  * Pedagogical Priority Crown mnemonic constant for pt-BR organic chemistry students.
  */
 export const PRIORITY_CROWN_MNEMONIC =
-  '👑 Macete da Coroa de Prioridade IUPAC: Ácido Carboxílico > Anidrido > Éster > Haleto de Acila > Amida > Nitrila > Aldeído > Cetona > Álcool > Enol > Fenol > Amina > Éter > Haleto de Alquila > Nitrocomposto > Hidrocarboneto.';
+  '👑 Macete da Coroa de Prioridade IUPAC: Ácido Carboxílico > Ácido Sulfônico > Anidrido > Éster > Haleto de Acila > Amida > Nitrila > Aldeído > Cetona > Álcool > Enol > Fenol > Tiol > Amina > Éter > Tioéter > Dissulfeto > Haleto de Alquila > Nitrocomposto > Hidrocarboneto.';
 
 export const PRIORITY_CROWN_ENEM_RHYME =
   '🎓 Mnemônico do ENEM: "Ácido Anidrou Éster Há Anos; Nitrilas Aldeídicas Cederam Álcoois E Fenóis Às Aminas, Éteres, Haletos e Nitros!"';
@@ -403,6 +407,16 @@ function evaluateFunction(
   }
   if ((uFn === 'amina' && tFn === 'amida') || (uFn === 'amida' && tFn === 'amina')) {
     return 0.3;
+  }
+  // Sulfur analogues: the skeleton was read right, only O and S were swapped.
+  const pairs: [OrganicFunction, OrganicFunction, number][] = [
+    ['tiol', 'alcool', 0.4],
+    ['tioeter', 'eter', 0.4],
+    ['dissulfeto', 'tioeter', 0.5],
+    ['acido_sulfonico', 'acido_carboxilico', 0.35],
+  ];
+  for (const [a, b, credit] of pairs) {
+    if ((uFn === a && tFn === b) || (uFn === b && tFn === a)) return credit;
   }
 
   return 0.0;
@@ -625,6 +639,21 @@ function generateFeedback(
     } else if ((tFn === 'enol' && uFn === 'alcool') || (tFn === 'alcool' && uFn === 'enol')) {
       messages.push(
         '💡 Macete ENEM (Enol vs Álcool): Enol tem a hidroxila (-OH) ligada a um carbono de dupla ligação alifática C=C (instável, sofre tautomeria); Álcool tem a hidroxila em carbono saturado sp3!'
+      );
+    } else if ((tFn === 'tiol' && uFn === 'alcool') || (tFn === 'alcool' && uFn === 'tiol')) {
+      messages.push(
+        '💡 Macete (Tiol vs Álcool): olhe o átomo preso ao carbono. -OH é álcool (sufixo -ol); -SH é tiol (sufixo -tiol, com o "o" de ligação: etanotiol). O enxofre é o que dá o cheiro forte do gás de cozinha!'
+      );
+    } else if ((tFn === 'tioeter' && uFn === 'eter') || (tFn === 'eter' && uFn === 'tioeter')) {
+      messages.push(
+        '💡 Macete (Tioéter vs Éter): C-O-C é éter (metoxi-); C-S-C é tioéter, o "sulfeto orgânico" (metilsulfanil-, ou sulfeto de dimetila no nome usual).'
+      );
+    } else if (
+      (tFn === 'acido_sulfonico' && uFn === 'acido_carboxilico') ||
+      (tFn === 'acido_carboxilico' && uFn === 'acido_sulfonico')
+    ) {
+      messages.push(
+        '💡 Macete (Ácido Sulfônico vs Carboxílico): -COOH é carboxílico (…oico); -SO3H, com o enxofre preso direto no carbono, é sulfônico (…sulfônico). Os sais do sulfônico são os detergentes!'
       );
     }
   }

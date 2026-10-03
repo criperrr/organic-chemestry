@@ -149,21 +149,57 @@ export function convert1993To2013(str: string): string {
     }
   );
 
-  // Pattern: (prefix-)?locants-(ciclo)?stemano(diol|triol|diona)
-  // e.g., '1,2-etanodiol' -> 'etano-1,2-diol'
+  // Pattern: (prefix-)?locants-(ciclo)?stemano(diol|triol|diona|tiol|sulfonico)
+  // e.g., '1,2-etanodiol' -> 'etano-1,2-diol', '1-propanotiol' -> 'propano-1-tiol',
+  // 'acido 1-propanossulfonico' -> 'acido propano-1-sulfonico' (the doubled s only
+  // exists when nothing separates the vowel from the suffix)
   const diolRegex = new RegExp(
-    `^(?:([a-z0-9(),' -]+?)([-\\s]))?([0-9,]+)-((?:ciclo)?(?:${STEMS}))ano(diol|triol|diona|triona)(\\s+de\\s+[a-z]+)?$`,
+    `^(?:([a-z0-9(),' -]+?)([-\\s]))?([0-9,]+)-((?:ciclo)?(?:${STEMS}))ano(diol|triol|diona|triona|tiol|ditiol|tritiol|s?sulfonico|dissulfonico)(\\s+de\\s+[a-z]+)?$`,
     'i'
   );
   res = res.replace(
     diolRegex,
     (_match, prefix, sep, locants, stem, suffix, ester) => {
       const p = formatPrefix(prefix, sep, stem);
-      return `${p}${stem}ano-${locants}-${suffix}${ester || ''}`;
+      return `${p}${stem}ano-${locants}-${suffix.replace(/^ss/, 's')}${ester || ''}`;
+    }
+  );
+
+  // Pattern: (prefix-)?enelocants-stem(en|in)(o)?-suffixlocants-suffix, the old style
+  // that keeps both sets of locants: '2-propen-1-ol' -> 'prop-2-en-1-ol',
+  // '2-propeno-1-tiol' -> 'prop-2-eno-1-tiol'
+  const splitRegex = new RegExp(
+    `^(?:([a-z0-9(),' -]+?)([-\\s]))?([0-9,]+)-((?:ciclo)?(?:${STEMS}))(a?(?:di|tri)?(?:en|in))(o?)-([0-9,]+)-([a-z]+)$`,
+    'i'
+  );
+  res = res.replace(
+    splitRegex,
+    (_match, prefix, sep, unsatLocants, stem, infix, linkO, suffixLocants, suffix) => {
+      const p = formatPrefix(prefix, sep, stem);
+      return `${p}${stem}-${unsatLocants}-${infix}${linkO}-${suffixLocants}-${suffix}`;
     }
   );
 
   return res;
+}
+
+/**
+ * Folds the sulfur spellings Brazilian textbooks and exams use onto the IUPAC
+ * 2013 form, so each is graded as the same name:
+ * - 'mercapto' (retired by IUPAC, still common) -> 'sulfanil'
+ * - 'metiltioetano', 'metil-tio-etano' -> 'metilsulfaniletano'; 'ditio' -> 'dissulfanil'
+ * - '(metilsulfanil)etano' -> 'metilsulfaniletano' (the marks are optional here)
+ * - 'butan-1-tiol', 'propan-2-sulfonico' (elided, as in UECE/UNIVAG) -> 'butano-1-tiol'
+ * - 'metanosulfonico', 'benzeno-sulfonico' -> 'metanossulfonico', 'benzenossulfonico'
+ */
+export function normalizeSulfurSpellings(str: string): string {
+  return str
+    .replace(/mercapto/g, 'sulfanil')
+    .replace(/([a-z]il)-?ditio-?(?=[a-z])/g, '$1dissulfanil')
+    .replace(/([a-z]il)-?tio-?(?!l|fen)(?=[a-z])/g, '$1sulfanil')
+    .replace(/\(([a-z]+sulfanil)\)/g, '$1')
+    .replace(/an-([0-9,]+)-((?:di|tri)?(?:tiol|s?sulfon(?:ico|ato)))\b/g, 'ano-$1-$2')
+    .replace(/([ae]n)o-?s?(sulfon(?:ico|ato))/g, '$1os$2');
 }
 
 /**
@@ -193,6 +229,7 @@ export function normalizeIUPACName(input: string): string {
   normalized = normalizeCiclo(normalized);
   normalized = normalizeHyphenBeforeH(normalized);
   normalized = normalizeRadicals(normalized);
+  normalized = normalizeSulfurSpellings(normalized);
   normalized = convert1993To2013(normalized);
 
   return normalized.trim();

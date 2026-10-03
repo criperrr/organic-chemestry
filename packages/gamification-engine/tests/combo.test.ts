@@ -286,12 +286,12 @@ describe('Achievements & Badges System', () => {
     const polymathUnlocked = checkNewAchievements({
       isPerfect: true,
       score: 1.0,
-      streak: 16,
-      maxStreak: 16,
+      streak: 20,
+      maxStreak: 20,
       responseTimeMs: 5000,
       totalXP: 3000,
       level: 7,
-      uniqueFunctionsCount: 16,
+      uniqueFunctionsCount: 20,
       unlockedBadgeIds: ['first_blood'],
     });
     expect(polymathUnlocked.map((b) => b.id)).toContain('polymath');

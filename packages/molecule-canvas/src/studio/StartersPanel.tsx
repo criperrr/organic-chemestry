@@ -138,6 +138,8 @@ const STARTERS: { label: string; hint: string; build: () => MolecularGraphData }
 
 export interface StartersPanelProps {
   onLoad: (graph: MolecularGraphData) => void;
+  /** Distance from the top of the viewport, clear of the Studio header. */
+  top: number;
   onHide: () => void;
 }
 
@@ -147,11 +149,11 @@ export interface StartersPanelProps {
  * Drawing benzene bond by bond every time you want to study a substituted
  * aromatic is busywork; the point of the exercise is what you hang off it.
  */
-export const StartersPanel: React.FC<StartersPanelProps> = ({ onLoad, onHide }) => (
+export const StartersPanel: React.FC<StartersPanelProps> = ({ onLoad, top, onHide }) => (
   <Balloon
     title="Esqueletos prontos"
     icon={<Library className="w-4 h-4" />}
-    initialPosition={{ top: 72, left: 376 }}
+    initialPosition={{ top, left: 376 }}
     width={320}
     onHide={onHide}
     hideKey="L"

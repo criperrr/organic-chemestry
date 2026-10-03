@@ -19,6 +19,13 @@ import { nitrocompostos } from './data-part4.js';
 import { haletosAlquila } from './data-part4.js';
 import { haletosAcila } from './data-part4.js';
 import { anidridos } from './data-part4.js';
+import {
+  tiois,
+  tioeteres,
+  dissulfetos,
+  acidosSulfonicos,
+  sulfuradosPolifuncionais,
+} from './data-part5.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -41,6 +48,10 @@ const OrganicFunctionSchema = z.enum([
   'haleto_alquila',
   'haleto_acila',
   'anidrido',
+  'tiol',
+  'tioeter',
+  'dissulfeto',
+  'acido_sulfonico',
 ]);
 
 const MoleculeSchema = z.object({
@@ -73,7 +84,15 @@ const allGroups = [
   { name: 'haleto_alquila', list: haletosAlquila },
   { name: 'haleto_acila', list: haletosAcila },
   { name: 'anidrido', list: anidridos },
+  { name: 'tiol', list: tiois },
+  { name: 'tioeter', list: tioeteres },
+  { name: 'dissulfeto', list: dissulfetos },
+  { name: 'acido_sulfonico', list: acidosSulfonicos },
 ];
+
+// Sulfur molecules led by another function (cisteína, metional...). They count
+// towards that function, so they skip the per-group minimum.
+const extraMolecules = sulfuradosPolifuncionais;
 
 const masterList = [];
 const seenIds = new Set();
@@ -98,6 +117,19 @@ for (const group of allGroups) {
 
     masterList.push(mol);
   }
+}
+
+for (const mol of extraMolecules) {
+  if (seenIds.has(mol.id)) {
+    throw new Error(`Duplicate id found: ${mol.id}`);
+  }
+  seenIds.add(mol.id);
+  const parseRes = MoleculeSchema.safeParse(mol);
+  if (!parseRes.success) {
+    console.error(`Validation error in molecule ${mol.id}:`, parseRes.error.format());
+    throw new Error(`Invalid molecule schema for ${mol.id}`);
+  }
+  masterList.push(mol);
 }
 
 console.log(`Total validated molecules: ${masterList.length}`);

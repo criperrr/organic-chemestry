@@ -15,10 +15,14 @@ import {
   CheckCircle2,
   XCircle,
   Award,
+  GitFork,
+  ArrowRight,
 } from 'lucide-react';
 import { SmilesCanvas } from '@quimicarush/smiles-renderer';
 import type { HighlightGroup } from '@quimicarush/smiles-renderer';
+import { IUPAC_PRIORITY_ORDER, ORGANIC_FUNCTION_COUNT } from '@quimicarush/chemistry-core';
 import type { OrganicFunction } from '@quimicarush/chemistry-core';
+import { useGameStore } from '../stores/useGameStore.js';
 
 interface FunctionTheoryDetail {
   id: OrganicFunction;
@@ -27,7 +31,7 @@ interface FunctionTheoryDetail {
   identifyingGroup: string;
   iupacSuffix: string;
   radicalPrefix: string;
-  priorityRank: number; // 1 to 16 (16 = highest)
+  priorityRank: number; // IUPAC_PRIORITY_ORDER value (higher = more senior)
   exampleSmiles: string;
   exampleIupac: string;
   commonNames: string;
@@ -45,7 +49,7 @@ export const THEORY_DATA: FunctionTheoryDetail[] = [
     identifyingGroup: 'Carboxila (-COOH)',
     iupacSuffix: 'Ácido ...-oico',
     radicalPrefix: 'carboxi-',
-    priorityRank: 16,
+    priorityRank: IUPAC_PRIORITY_ORDER.acido_carboxilico,
     exampleSmiles: 'CC(=O)O',
     exampleIupac: 'Ácido etanoico',
     commonNames: 'Ácido acético (vinagre)',
@@ -58,13 +62,32 @@ export const THEORY_DATA: FunctionTheoryDetail[] = [
       'REI DA PRIORIDADE: Em qualquer composto polifuncional, o ácido carboxílico possui a maior prioridade da química orgânica geral. Todos os outros grupos viram radicais!',
   },
   {
+    id: 'acido_sulfonico',
+    title: 'Ácidos Sulfônicos',
+    generalFormula: 'R-SO3H',
+    identifyingGroup: 'Sulfônico (-SO3H)',
+    iupacSuffix: 'Ácido ...sulfônico',
+    radicalPrefix: 'sulfo-',
+    priorityRank: IUPAC_PRIORITY_ORDER.acido_sulfonico,
+    exampleSmiles: 'CS(=O)(=O)O',
+    exampleIupac: 'Ácido metanossulfônico',
+    commonNames: 'Ácido mesílico',
+    highlightType: 'sulfur',
+    everydayStory:
+      'Os detergentes de pia são sais de ácidos sulfônicos: o alquilbenzenossulfonato de sódio linear (LAS) tem uma cauda apolar que prende a gordura e uma cabeça -SO3⁻Na⁺ que se dissolve na água. A taurina dos energéticos também tem o grupo sulfônico, e por isso não é um aminoácido de verdade.',
+    identificationRule:
+      'Enxofre ligado DIRETO ao carbono, com dois oxigênios em dupla e uma hidroxila: C-SO3H. Se houver um oxigênio entre o carbono e o enxofre (C-O-SO3H), já não é ácido sulfônico, e sim um éster sulfúrico (sulfato de alquila).',
+    enemTip:
+      'ENEM 2018 e 2023: o detergente de cadeia RAMIFICADA (ABS) não é degradado pelas bactérias; o de cadeia NORMAL (LAS) é biodegradável. No nome, o "o" do hidrocarboneto dobra o "s": metanossulfônico, benzenossulfônico. Com localizante não dobra: ácido propano-2-sulfônico.',
+  },
+  {
     id: 'anidrido',
     title: 'Anidridos de Ácido',
     generalFormula: "R-CO-O-CO-R'",
     identifyingGroup: 'Oxigênio entre 2 Carbonilas (-CO-O-CO-)',
     iupacSuffix: 'Anidrido ...oico',
     radicalPrefix: 'alcanoilóxi- (ou acetilóxi-)',
-    priorityRank: 15,
+    priorityRank: IUPAC_PRIORITY_ORDER.anidrido,
     exampleSmiles: 'CC(=O)OC(=O)C',
     exampleIupac: 'Anidrido etanoico',
     commonNames: 'Anidrido acético',
@@ -83,7 +106,7 @@ export const THEORY_DATA: FunctionTheoryDetail[] = [
     identifyingGroup: 'Carboxilato (-COO-)',
     iupacSuffix: '...oato de [alquila]-ila',
     radicalPrefix: 'alcoxicarbonil- ou acilóxi-',
-    priorityRank: 14,
+    priorityRank: IUPAC_PRIORITY_ORDER.ester,
     exampleSmiles: 'CC(=O)OCC',
     exampleIupac: 'Etanoato de etila',
     commonNames: 'Acetato de etila (essência de maçã/solvente)',
@@ -102,7 +125,7 @@ export const THEORY_DATA: FunctionTheoryDetail[] = [
     identifyingGroup: 'Haleto de Carbonila (-COX)',
     iupacSuffix: 'Haleto de ...oíla',
     radicalPrefix: 'halocarbonil- (ex: clorocarbonil-)',
-    priorityRank: 13,
+    priorityRank: IUPAC_PRIORITY_ORDER.haleto_acila,
     exampleSmiles: 'CC(=O)Cl',
     exampleIupac: 'Cloreto de etanoíla',
     commonNames: 'Cloreto de acetila',
@@ -121,7 +144,7 @@ export const THEORY_DATA: FunctionTheoryDetail[] = [
     identifyingGroup: 'Amida (-CO-N-)',
     iupacSuffix: '...amida',
     radicalPrefix: 'carbamoil- ou acetamido-',
-    priorityRank: 12,
+    priorityRank: IUPAC_PRIORITY_ORDER.amida,
     exampleSmiles: 'CC(=O)N',
     exampleIupac: 'Etanamida',
     commonNames: 'Acetamida',
@@ -140,7 +163,7 @@ export const THEORY_DATA: FunctionTheoryDetail[] = [
     identifyingGroup: 'Ciano (-C≡N)',
     iupacSuffix: '...nitrila',
     radicalPrefix: 'ciano-',
-    priorityRank: 11,
+    priorityRank: IUPAC_PRIORITY_ORDER.nitrila,
     exampleSmiles: 'CC#N',
     exampleIupac: 'Etanonitrila',
     commonNames: 'Acetonitrila / Cianeto de metila',
@@ -159,7 +182,7 @@ export const THEORY_DATA: FunctionTheoryDetail[] = [
     identifyingGroup: 'Formila / Aldoxila (-CHO)',
     iupacSuffix: '...al',
     radicalPrefix: 'formil- (ramificado) ou oxo-',
-    priorityRank: 10,
+    priorityRank: IUPAC_PRIORITY_ORDER.aldeido,
     exampleSmiles: 'CC=O',
     exampleIupac: 'Etanal',
     commonNames: 'Acetaldeído',
@@ -178,7 +201,7 @@ export const THEORY_DATA: FunctionTheoryDetail[] = [
     identifyingGroup: 'Carbonila secundária (C-CO-C)',
     iupacSuffix: '...ona',
     radicalPrefix: 'oxo-',
-    priorityRank: 9,
+    priorityRank: IUPAC_PRIORITY_ORDER.cetona,
     exampleSmiles: 'CC(=O)C',
     exampleIupac: 'Propanona',
     commonNames: 'Acetona / Dimetilcetona',
@@ -197,7 +220,7 @@ export const THEORY_DATA: FunctionTheoryDetail[] = [
     identifyingGroup: 'Hidroxila (-OH) em carbono sp3',
     iupacSuffix: '...ol',
     radicalPrefix: 'hidróxi-',
-    priorityRank: 8,
+    priorityRank: IUPAC_PRIORITY_ORDER.alcool,
     exampleSmiles: 'CCO',
     exampleIupac: 'Etanol',
     commonNames: 'Álcool etílico',
@@ -216,7 +239,7 @@ export const THEORY_DATA: FunctionTheoryDetail[] = [
     identifyingGroup: 'Hidroxila (-OH) em carbono sp2 de dupla',
     iupacSuffix: '...en-...ol',
     radicalPrefix: 'hidróxi-',
-    priorityRank: 7,
+    priorityRank: IUPAC_PRIORITY_ORDER.enol,
     exampleSmiles: 'C=CO',
     exampleIupac: 'Etenol',
     commonNames: 'Álcool vinílico',
@@ -235,7 +258,7 @@ export const THEORY_DATA: FunctionTheoryDetail[] = [
     identifyingGroup: 'Hidroxila (-OH) direta no anel benzênico',
     iupacSuffix: '...fenol ou hidroxibenzeno',
     radicalPrefix: 'hidróxi- ou (hidroxifenil)-',
-    priorityRank: 6,
+    priorityRank: IUPAC_PRIORITY_ORDER.fenol,
     exampleSmiles: 'Oc1ccccc1',
     exampleIupac: 'Hidroxibenzeno',
     commonNames: 'Fenol comum / Ácido fênico',
@@ -248,13 +271,32 @@ export const THEORY_DATA: FunctionTheoryDetail[] = [
       'Fenóis são ácidos fracos (mais ácidos que álcoois e água) porque o ânion fenolato é estabilizado por ressonância no anel aromático.',
   },
   {
+    id: 'tiol',
+    title: 'Tióis (Tioálcoois / Mercaptanas)',
+    generalFormula: 'R-SH',
+    identifyingGroup: 'Sulfidrila (-SH)',
+    iupacSuffix: '...tiol',
+    radicalPrefix: 'sulfanil- (antigo: mercapto-)',
+    priorityRank: IUPAC_PRIORITY_ORDER.tiol,
+    exampleSmiles: 'CCS',
+    exampleIupac: 'Etanotiol',
+    commonNames: 'Etilmercaptana',
+    highlightType: 'sulfur',
+    everydayStory:
+      'O gás de cozinha é inodoro; o cheiro de vazamento vem de uma mercaptana adicionada de propósito. Os tióis também dão o cheiro do jato do cangambá, do mau hálito, da cebola cortada e do café torrado. O nome mercaptana vem de "mercurium captans", que captura mercúrio.',
+    identificationRule:
+      'Troque o O de um álcool por S: -SH ligado a carbono. Com o -SH preso direto no anel benzênico é um tiofenol (benzenotiol).',
+    enemTip:
+      'O sufixo -tiol começa com consoante, então o "o" do hidrocarboneto fica: etanotiol, propano-1-tiol (as provas também escrevem butan-1-tiol e 1-butanotiol). Tiol ferve a temperatura MENOR que o álcool equivalente: faz ligação de hidrogênio fraca.',
+  },
+  {
     id: 'amina',
     title: 'Aminas',
     generalFormula: "R-NH2 / R-NH-R' / R-NR'R''",
     identifyingGroup: 'Grupo Amino derivado de NH3',
     iupacSuffix: '...amina',
     radicalPrefix: 'amino- (ou dimetilamino-)',
-    priorityRank: 5,
+    priorityRank: IUPAC_PRIORITY_ORDER.amina,
     exampleSmiles: 'CCN',
     exampleIupac: 'Etanamina',
     commonNames: 'Etilamina',
@@ -273,7 +315,7 @@ export const THEORY_DATA: FunctionTheoryDetail[] = [
     identifyingGroup: 'Oxigênio Heteroátomo (C-O-C)',
     iupacSuffix: '[menor]-óxi-[maior]ano',
     radicalPrefix: 'alcóxi- (metóxi-, etóxi-)',
-    priorityRank: 4,
+    priorityRank: IUPAC_PRIORITY_ORDER.eter,
     exampleSmiles: 'CCOCC',
     exampleIupac: 'Etoxietano',
     commonNames: 'Éter dietílico / Éter comum',
@@ -286,13 +328,51 @@ export const THEORY_DATA: FunctionTheoryDetail[] = [
       'Ponto de ebulição baixo porque não fazem ligações de hidrogênio entre si (ao contrário dos seus isômeros funcionais, os álcoois).',
   },
   {
+    id: 'tioeter',
+    title: 'Tioéteres (Sulfetos)',
+    generalFormula: "R-S-R'",
+    identifyingGroup: 'Enxofre entre carbonos (-S-)',
+    iupacSuffix: 'prefixo (alquilsulfanil)',
+    radicalPrefix: 'metilsulfanil- (ou metiltio-)',
+    priorityRank: IUPAC_PRIORITY_ORDER.tioeter,
+    exampleSmiles: 'CSC',
+    exampleIupac: '(Metilsulfanil)metano',
+    commonNames: 'Sulfeto de dimetila (DMS), metiltiometano',
+    highlightType: 'sulfur',
+    everydayStory:
+      'O cheiro de maresia vem do sulfeto de dimetila liberado por algas. O gás mostarda da Primeira Guerra (Cl-CH2-CH2-S-CH2-CH2-Cl) é um tioéter, e o aminoácido metionina também tem um.',
+    identificationRule:
+      'Enxofre ENTRE dois carbonos, sem hidrogênio no S: é um éter com S no lugar do O. Não confunda "sulfeto" (C-S-C) com "sulfato" (sal ou éster do ácido sulfúrico).',
+    enemTip:
+      'Três nomes aceitos: IUPAC (metilsulfanil)etano, o antigo metiltioetano (radical menor + tio + cadeia maior) e o usual "sulfeto de etila e metila". Evite "sulfeto de metiletila": metiletila é o nome do isopropila.',
+  },
+  {
+    id: 'dissulfeto',
+    title: 'Dissulfetos',
+    generalFormula: "R-S-S-R'",
+    identifyingGroup: 'Ponte dissulfeto (-S-S-)',
+    iupacSuffix: 'prefixo (alquildissulfanil)',
+    radicalPrefix: 'metildissulfanil-',
+    priorityRank: IUPAC_PRIORITY_ORDER.dissulfeto,
+    exampleSmiles: 'CSSC',
+    exampleIupac: '(Metildissulfanil)metano',
+    commonNames: 'Dissulfeto de dimetila',
+    highlightType: 'sulfur',
+    everydayStory:
+      'O formato do cabelo é mantido por pontes dissulfeto entre cisteínas da queratina: permanentes e alisantes quebram e refazem essas pontes. O dissulfeto de dialila é o principal aroma do óleo de alho.',
+    identificationRule:
+      'Dois enxofres ligados entre si, cada um preso a um carbono: C-S-S-C.',
+    enemTip:
+      'Na UECE, a alicina do alho foi classificada como "dissulfeto orgânico" (gabarito C). A vulcanização da borracha também cria pontes de enxofre entre as cadeias, deixando o pneu mais resistente.',
+  },
+  {
     id: 'haleto_alquila',
     title: 'Haletos de Alquila',
     generalFormula: 'R-X (X = F, Cl, Br, I)',
     identifyingGroup: 'Halogênio em Alcano',
     iupacSuffix: 'halogênio + hidrocarboneto',
     radicalPrefix: 'flúor-, cloro-, bromo-, iodo-',
-    priorityRank: 3,
+    priorityRank: IUPAC_PRIORITY_ORDER.haleto_alquila,
     exampleSmiles: 'CCCl',
     exampleIupac: 'Cloroetano',
     commonNames: 'Cloreto de etila / Lança-perfume',
@@ -311,7 +391,7 @@ export const THEORY_DATA: FunctionTheoryDetail[] = [
     identifyingGroup: 'Grupo Nitro (-NO2)',
     iupacSuffix: 'nitro- + hidrocarboneto',
     radicalPrefix: 'nitro-',
-    priorityRank: 2,
+    priorityRank: IUPAC_PRIORITY_ORDER.nitrocomposto,
     exampleSmiles: 'CC[N+](=O)[O-]',
     exampleIupac: 'Nitroetano',
     commonNames: 'Nitroetano',
@@ -330,7 +410,7 @@ export const THEORY_DATA: FunctionTheoryDetail[] = [
     identifyingGroup: 'Somente Carbono e Hidrogênio',
     iupacSuffix: '...o',
     radicalPrefix: 'hidrocarboneto base',
-    priorityRank: 1,
+    priorityRank: IUPAC_PRIORITY_ORDER.hidrocarboneto,
     exampleSmiles: 'CCCC',
     exampleIupac: 'Butano',
     commonNames: 'Gás de cozinha (GLP junto com propano)',
@@ -558,8 +638,24 @@ export const ENEM_MACETES: EnemMacete[] = [
     },
   },
   {
+    id: 'macete-enxofre',
+    title: '7. Troque o O pelo S: O Macete das Funções Sulfuradas',
+    badge: 'Tiocompostos',
+    mnemonicChant:
+      '🧄 "Álcool -OH vira tiol -SH; éter -O- vira tioéter -S-; e o -SO3H preso no carbono é o ácido sulfônico do detergente!"',
+    explanation:
+      'Quase toda função sulfurada é uma função oxigenada com S no lugar do O. Na prioridade, o ácido sulfônico só perde para o ácido carboxílico; o tiol fica logo abaixo do álcool e do fenol (e acima da amina); tioéteres e dissulfetos, como os éteres, nunca viram sufixo.',
+    examTrap:
+      'Confundir sulfeto (C-S-C) com sulfato, e ácido sulfônico (ligação C-S) com éster sulfúrico (C-O-S, como no laurilsulfato de sódio dos xampus). Outra: achar que o tiol ferve mais que o álcool; é o contrário, porque a ligação de hidrogênio do -SH é fraca.',
+    practicalExample: {
+      molecule: 'HS-CH2-CH2-NH2 (cisteamina)',
+      correct: '2-aminoetanotiol (tiol > amina: -SH é o sufixo, -NH2 vira amino-)',
+      wrong: '2-sulfaniletanamina ou 2-mercaptoetilamina como nome oficial',
+    },
+  },
+  {
     id: 'macete-acordo-ortografico',
-    title: '6. O Segredo do Hífen no Novo Acordo Ortográfico (pt-BR)',
+    title: '8. O Segredo do Hífen no Novo Acordo Ortográfico (pt-BR)',
     badge: 'Gramática Química ABL/SBQ',
     mnemonicChant:
       '✍️ "Diante de H, hífen sem dó! Com outras letras, junta tudo e seja o que for!"',
@@ -762,11 +858,11 @@ export const SENSORY_PROFILES: SensoryProfile[] = [
       'Os ácidos caproico (C6), caprílico (C8) e cáprico (C10) recebem esses nomes da palavra latina "capra" (cabra), por serem os responsáveis pelo cheiro almiscarado forte de bodes!',
   },
   {
-    title: 'Fenóis & Tióis: Antissepsia Hospitalar, Cravo e Gambá',
+    title: 'Fenóis: Antissepsia Hospitalar, Cravo e Creolina',
     badge: 'Desinfecção & Especiarias',
     iconName: 'Award',
     scientificReason:
-      'Anéis aromáticos com hidroxila direta com acidez moderada e poder bactericida cáustico, ou compostos com enxofre bivalente volátil de extrema detectabilidade olfativa.',
+      'Anéis aromáticos com hidroxila direta, de acidez moderada e poder bactericida cáustico.',
     compounds: [
       {
         name: 'Fenol Comum (Ácido Fênico)',
@@ -787,16 +883,45 @@ export const SENSORY_PROFILES: SensoryProfile[] = [
         sensoryDescription: 'Cheiro alcatroado e pesado de curral desinfetado.',
         realWorldRole: 'Componente ativo da Creolina veterinária para saneamento de instalações.',
       },
+    ],
+    enemCuriosity:
+      'O fenol reage com NaOH formando fenolato de sódio; o álcool etílico não. É a pegadinha clássica para diferenciar fenol de álcool aromático.',
+  },
+  {
+    title: 'Sulfurados: Gás de Cozinha, Cangambá, Alho e Maresia',
+    badge: 'O Nariz Detector de Enxofre',
+    iconName: 'ShieldAlert',
+    scientificReason:
+      'Compostos voláteis com enxofre bivalente (-SH, -S-, -S-S-) que o nariz humano detecta em concentrações baixíssimas. A ligação de hidrogênio fraca do -SH os deixa mais voláteis que os álcoois equivalentes.',
+    compounds: [
       {
-        name: 'Etanotiol (Tiol / Mercaptana)',
-        iupac: 'etanotiol (CH3-CH2-SH)',
-        sensoryDescription: 'Cheiro insuportável de repolho podre, ovo podre e gambá.',
+        name: 'Etanotiol (etilmercaptana)',
+        iupac: 'etanotiol',
+        sensoryDescription: 'Cheiro de "gás vazando": repolho podre e ovo estragado.',
         realWorldRole:
-          'Odorizador de segurança injetado em doses mínimas no GLP para denunciar vazamentos de gás.',
+          'Odorizante de segurança adicionado ao GLP, que é inodoro, para denunciar vazamentos.',
+      },
+      {
+        name: 'But-2-eno-1-tiol e 3-metilbutano-1-tiol',
+        iupac: 'but-2-eno-1-tiol / 3-metilbutano-1-tiol',
+        sensoryDescription: 'O jato do cangambá (jaritataca), sentido a centenas de metros.',
+        realWorldRole: 'Arma química natural de defesa do animal.',
+      },
+      {
+        name: 'Dissulfeto de dialila',
+        iupac: '3-[(prop-2-enil)dissulfanil]propeno',
+        sensoryDescription: 'Aroma forte e picante do alho amassado.',
+        realWorldRole: 'Principal componente do óleo essencial de alho.',
+      },
+      {
+        name: 'Sulfeto de dimetila (DMS)',
+        iupac: '(metilsulfanil)metano',
+        sensoryDescription: 'Cheiro de maresia e de milho cozido.',
+        realWorldRole: 'Liberado por algas marinhas; ajuda a formar nuvens sobre o oceano.',
       },
     ],
     enemCuriosity:
-      'O nariz humano consegue detectar o etanotiol em concentrações minúsculas de 1 parte por bilhão no ar. Sem ele, vazamentos de gás de cozinha (que é inodoro) causariam asfixias e explosões sem aviso!',
+      'Tióis fervem a temperaturas MENORES que os álcoois equivalentes (butan-1-tiol ≈ 98 °C x butan-1-ol ≈ 118 °C): o -SH faz ligações de hidrogênio muito mais fracas que o -OH. A UNIVAG cobrou exatamente essa comparação.',
   },
   {
     title: 'Álcoois: O Frio Ilusório do Mentol e o Floral dos Gerânios',
@@ -871,7 +996,7 @@ export const SENSORY_PROFILES: SensoryProfile[] = [
   },
 ];
 
-type HubTab = 'compendium' | 'locant_battle' | 'enem_macetes' | 'sensory_guide';
+type HubTab = 'compendium' | 'isomerism' | 'locant_battle' | 'enem_macetes' | 'sensory_guide';
 
 const getSensoryIcon = (name: string) => {
   switch (name) {
@@ -895,6 +1020,7 @@ const getSensoryIcon = (name: string) => {
 };
 
 export const TheoryHub: React.FC = () => {
+  const { setActiveTab: setGlobalActiveTab } = useGameStore();
   const [activeTab, setActiveTab] = useState<HubTab>('compendium');
   const [selectedFunction, setSelectedFunction] = useState<FunctionTheoryDetail>(THEORY_DATA[0]);
   const [selectedBattle, setSelectedBattle] = useState<LocantBattle>(LOCANT_BATTLES[0]);
@@ -919,7 +1045,7 @@ export const TheoryHub: React.FC = () => {
             </h1>
           </div>
           <p className="text-slate-300 text-sm max-w-2xl leading-relaxed">
-            Compêndio definitivo das 16 funções orgânicas, macetes de vestibular (ENEM, FUVEST, Unicamp), regras de menores localizadores e conexões sensoriais do cotidiano.
+            Compêndio definitivo das {ORGANIC_FUNCTION_COUNT} funções orgânicas, macetes de vestibular (ENEM, FUVEST, Unicamp), regras de menores localizadores e conexões sensoriais do cotidiano.
           </p>
         </div>
 
@@ -934,7 +1060,19 @@ export const TheoryHub: React.FC = () => {
             }`}
           >
             <BookOpen className="w-3.5 h-3.5" />
-            <span>As 16 Funções</span>
+            <span>As {ORGANIC_FUNCTION_COUNT} Funções</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('isomerism')}
+            className={`shrink-0 px-3 py-2 sm:py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 min-h-[38px] ${
+              activeTab === 'isomerism'
+                ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                : 'text-slate-300 hover:text-white'
+            }`}
+          >
+            <GitFork className="w-3.5 h-3.5" />
+            <span>Guia de Isomeria</span>
           </button>
 
           <button
@@ -975,7 +1113,7 @@ export const TheoryHub: React.FC = () => {
         </div>
       </div>
 
-      {/* TAB 1: 16 CANONICAL FUNCTIONS COMPENDIUM */}
+      {/* TAB 1: CANONICAL FUNCTIONS COMPENDIUM */}
       {activeTab === 'compendium' && (
         <div className="flex flex-col gap-6">
           {/* Morphology Universal Blueprint */}
@@ -1040,7 +1178,7 @@ export const TheoryHub: React.FC = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Filtrar as 16 funções por nome, sufixo ou história..."
+              placeholder={`Filtrar as ${ORGANIC_FUNCTION_COUNT} funções por nome, sufixo ou história...`}
               className="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
             />
           </div>
@@ -1051,7 +1189,7 @@ export const TheoryHub: React.FC = () => {
             <div className="flex lg:hidden flex-col gap-1.5 w-full">
               <div className="flex items-center justify-between px-1">
                 <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                  As 16 Classes Canônicas ({filteredFunctions.length})
+                  As Classes Canônicas ({filteredFunctions.length})
                 </span>
                 <span className="text-[10px] text-cyan-400 font-mono">
                   Role horizontalmente →
@@ -1080,10 +1218,10 @@ export const TheoryHub: React.FC = () => {
               </div>
             </div>
 
-            {/* Desktop Left Column: 16 Function Buttons (>= lg) */}
+            {/* Desktop Left Column: Function Buttons (>= lg) */}
             <div className="hidden lg:flex lg:col-span-4 flex-col gap-2 max-h-[620px] overflow-y-auto pr-1">
               <span className="text-xs font-bold text-slate-400 uppercase tracking-wider px-1">
-                As 16 Classes Canônicas ({filteredFunctions.length})
+                As Classes Canônicas ({filteredFunctions.length})
               </span>
               {filteredFunctions.map((item) => {
                 const isSelected = selectedFunction.id === item.id;
@@ -1134,7 +1272,7 @@ export const TheoryHub: React.FC = () => {
 
                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-950/60 border border-amber-600/50 text-amber-300 font-mono text-xs font-bold">
                   <Crown className="w-4 h-4 text-amber-400" />
-                  <span>Prioridade IUPAC: {selectedFunction.priorityRank} / 16</span>
+                  <span>Prioridade IUPAC: {selectedFunction.priorityRank} / {ORGANIC_FUNCTION_COUNT}</span>
                 </div>
               </div>
 
@@ -1550,6 +1688,261 @@ export const TheoryHub: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Tab 5: Guia Completo de Isomeria (Plana e Espacial) */}
+      {activeTab === 'isomerism' && (
+        <div className="flex flex-col gap-6 animate-fadeIn">
+          {/* Top Practice CTA Card */}
+          <div className="p-6 rounded-2xl bg-gradient-to-r from-emerald-950/70 via-teal-950/60 to-slate-900 border border-emerald-600/50 shadow-xl backdrop-blur-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex flex-col gap-1">
+              <span className="text-emerald-400 text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5">
+                <GitFork className="w-4 h-4 text-emerald-400" />
+                Módulo Interativo de Treinamento
+              </span>
+              <h2 className="text-xl sm:text-2xl font-black text-white">
+                Pronto para treinar Isomeria na prática?
+              </h2>
+              <p className="text-slate-300 text-xs sm:text-sm max-w-xl leading-relaxed">
+                Acesse o modo de treino com desafios de pares, contagem de carbonos quirais e radar cis-trans com feedback morfológico instantâneo.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setGlobalActiveTab('isomeria')}
+              className="px-5 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-black text-sm flex items-center gap-2 shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all cursor-pointer shrink-0"
+            >
+              <span>Abrir Treinador de Isomeria</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Quick Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-5 rounded-2xl bg-slate-900/90 border border-indigo-500/30 flex flex-col gap-2.5">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-indigo-500/20 text-indigo-400">
+                  <Layers className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Isomeria Plana (Constitucional)</h3>
+                  <span className="text-xs text-indigo-300">Diferença perceptível na fórmula estrutural plana</span>
+                </div>
+              </div>
+              <p className="text-slate-300 text-xs leading-relaxed">
+                Ocorre quando compostos com a mesma fórmula molecular apresentam conectividades atômicas diferentes. Subdivide-se em: <strong>Função</strong>, <strong>Cadeia</strong>, <strong>Posição</strong>, <strong>Metameria</strong> (Compensação) e <strong>Tautomeria</strong> (Dinâmica).
+              </p>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-slate-900/90 border border-emerald-500/30 flex flex-col gap-2.5">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Isomeria Espacial (Estereoisomeria)</h3>
+                  <span className="text-xs text-emerald-300">Mesma conectividade, arranjo tridimensional diferente</span>
+                </div>
+              </div>
+              <p className="text-slate-300 text-xs leading-relaxed">
+                As moléculas têm as mesmas ligações atômicas, mas os átomos estão orientados de maneira distinta no espaço 3D. Subdivide-se em <strong>Isomeria Geométrica (Cis-Trans / Z-E)</strong> e <strong>Isomeria Óptica (Quiralidade, Enantiômeros, Meso)</strong>.
+              </p>
+            </div>
+          </div>
+
+          {/* Detailed Section: Isomeria Plana */}
+          <div className="flex flex-col gap-3">
+            <h3 className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-cyan-300 flex items-center gap-2">
+              <Layers className="w-5 h-5 text-indigo-400" />
+              <span>1. Os 5 Tipos de Isomeria Plana</span>
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+              {/* Função */}
+              <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 flex flex-col gap-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-cyan-300 text-sm">Isomeria de Função</span>
+                  <span className="px-2 py-0.5 rounded bg-cyan-950/80 border border-cyan-800 text-[10px] text-cyan-200 font-mono">1</span>
+                </div>
+                <p className="text-slate-300">
+                  Mesma fórmula molecular, mas pertencem a <strong>funções químicas distintas</strong>.
+                </p>
+                <div className="p-2 rounded bg-slate-950 border border-slate-800 font-mono text-[11px] text-slate-300 space-y-1">
+                  <div>• CnH2n+2O: Álcool ↔ Éter (Etanol e Metoximetano)</div>
+                  <div>• CnH2nO: Aldeído ↔ Cetona (Propanal e Propanona)</div>
+                  <div>• CnH2nO2: Ácido ↔ Éster (Ácido acético e Formiato de metila)</div>
+                </div>
+                <span className="text-amber-400 text-[11px] pt-1">
+                  ★ Mais cobrada em vestibulares e ENEM!
+                </span>
+              </div>
+
+              {/* Cadeia */}
+              <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 flex flex-col gap-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-indigo-300 text-sm">Isomeria de Cadeia</span>
+                  <span className="px-2 py-0.5 rounded bg-indigo-950/80 border border-indigo-800 text-[10px] text-indigo-200 font-mono">2</span>
+                </div>
+                <p className="text-slate-300">
+                  Mesma função e fórmula, mas o <strong>esqueleto carbônico</strong> difere.
+                </p>
+                <div className="p-2 rounded bg-slate-950 border border-slate-800 font-mono text-[11px] text-slate-300 space-y-1">
+                  <div>• Normal vs Ramificada: Butano e 2-Metilpropano</div>
+                  <div>• Aberta vs Cíclica: But-1-eno e Ciclobutano (C4H8)</div>
+                  <div>• Anel normal vs ramificado: Ciclobutano e Metilciclopropano</div>
+                </div>
+                <span className="text-indigo-300 text-[11px] pt-1">
+                  Dica: CnH2n serve para alcenos e ciclanos.
+                </span>
+              </div>
+
+              {/* Posição */}
+              <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 flex flex-col gap-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-amber-300 text-sm">Isomeria de Posição</span>
+                  <span className="px-2 py-0.5 rounded bg-amber-950/80 border border-amber-800 text-[10px] text-amber-200 font-mono">3</span>
+                </div>
+                <p className="text-slate-300">
+                  Mesma função e mesma cadeia, mudando apenas a <strong>posição (localizador)</strong> de um grupo funcional, insaturação ou radical.
+                </p>
+                <div className="p-2 rounded bg-slate-950 border border-slate-800 font-mono text-[11px] text-slate-300 space-y-1">
+                  <div>• Grupo: Propan-1-ol vs Propan-2-ol</div>
+                  <div>• Dupla: But-1-eno vs But-2-eno</div>
+                  <div>• Aromático: o-Xileno (1,2) vs m-Xileno (1,3) vs p-Xileno (1,4)</div>
+                </div>
+                <span className="text-amber-300 text-[11px] pt-1">
+                  Dica: Se o nome só mudar o número, é de posição!
+                </span>
+              </div>
+
+              {/* Metameria */}
+              <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 flex flex-col gap-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-purple-300 text-sm">Metameria (Compensação)</span>
+                  <span className="px-2 py-0.5 rounded bg-purple-950/80 border border-purple-800 text-[10px] text-purple-200 font-mono">4</span>
+                </div>
+                <p className="text-slate-300">
+                  Caso especial de posição restrito à posição de um <strong>heteroátomo (O, N, S)</strong> que divide a cadeia em radicais de tamanhos diferentes.
+                </p>
+                <div className="p-2 rounded bg-slate-950 border border-slate-800 font-mono text-[11px] text-slate-300 space-y-1">
+                  <div>• Éteres: Metoxipropano (1C-O-3C) vs Etoxietano (2C-O-2C)</div>
+                  <div>• Aminas: Metilpropilamina vs Dietilamina</div>
+                  <div>• Ésteres: Propanoato de metila vs Acetato de etila</div>
+                </div>
+              </div>
+
+              {/* Tautomeria */}
+              <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 flex flex-col gap-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-rose-300 text-sm">Tautomeria (Dinâmica)</span>
+                  <span className="px-2 py-0.5 rounded bg-rose-950/80 border border-rose-800 text-[10px] text-rose-200 font-mono">5</span>
+                </div>
+                <p className="text-slate-300">
+                  Isômeros de função que coexistem em <strong>equilíbrio químico espontâneo</strong> em solução líquida via migração de próton H⁺.
+                </p>
+                <div className="p-2 rounded bg-slate-950 border border-slate-800 font-mono text-[11px] text-slate-300 space-y-1">
+                  <div>• Ceto-enólica: Propanona (C=O) ⇌ Prop-1-en-2-ol (C=C-OH)</div>
+                  <div>• Aldo-enólica: Etanal ⇌ Etenol</div>
+                </div>
+                <span className="text-rose-300 text-[11px] pt-1">
+                  A forma carbonílica (ceto ou aldo) é sempre a mais estável e majoritária.
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Detailed Section: Isomeria Espacial */}
+          <div className="flex flex-col gap-3 mt-2">
+            <h3 className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-teal-300 flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-emerald-400" />
+              <span>2. Os 2 Tipos de Isomeria Espacial (Estereoisomeria)</span>
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Geométrica */}
+              <div className="p-5 rounded-2xl bg-slate-900/90 border border-teal-500/30 flex flex-col gap-3 text-xs">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-base font-bold text-teal-300">Isomeria Geométrica (Cis-Trans / Z-E)</h4>
+                  <span className="px-2 py-0.5 rounded bg-teal-950 text-teal-300 font-mono text-[11px] border border-teal-800">
+                    Rigidez 3D
+                  </span>
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+                  <div className="font-semibold text-white">Condição Obrigatória:</div>
+                  <div className="font-mono text-cyan-300 text-[11px]">
+                    Em alcenos: R₁ ≠ R₂ no C1 e R₃ ≠ R₄ no C2 ao redor de C=C.
+                  </div>
+                  <p className="text-slate-400 text-[11px]">
+                    Se um carbono da dupla tiver dois ligantes idênticos (ex: =CH₂ com dois -H), NÃO HÁ isomeria geométrica!
+                  </p>
+                </div>
+
+                <div className="space-y-1.5 text-slate-300 leading-relaxed">
+                  <div>
+                    <strong>• Cis (Z):</strong> ligantes de maior massa no mesmo lado do plano da dupla ligação.
+                  </div>
+                  <div>
+                    <strong>• Trans (E):</strong> ligantes de maior massa em lados opostos do plano da dupla ligação.
+                  </div>
+                  <div>
+                    <strong>• Em Ciclos (Bayeriana):</strong> substituintes na mesma face (cis) ou faces opostas (trans) do plano do anel rígido.
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-indigo-950/40 border border-indigo-800/40 text-[11px] text-indigo-200">
+                  <strong>Propriedades Físicas (Cai no ENEM):</strong>
+                  <br />
+                  • Polaridade: Cis &gt; Trans (Cis é polar por vetores somados; Trans tem cancelamento de dipolos).
+                  <br />
+                  • Ponto de Ebulição: Cis &gt; Trans (maior atração intermolecular dipolar).
+                  <br />
+                  • Ponto de Fusão: Trans &gt; Cis (Trans é mais simétrico e empacota melhor no retículo cristalino).
+                </div>
+              </div>
+
+              {/* Óptica */}
+              <div className="p-5 rounded-2xl bg-slate-900/90 border border-emerald-500/30 flex flex-col gap-3 text-xs">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-base font-bold text-emerald-300">Isomeria Óptica (Quiralidade)</h4>
+                  <span className="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 font-mono text-[11px] border border-emerald-800">
+                    Luz Polarizada
+                  </span>
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+                  <div className="font-semibold text-white">O que é um Carbono Quiral (C*)?</div>
+                  <p className="text-slate-300 text-[11px] leading-relaxed">
+                    É um átomo de carbono tetraédrico (sp³) ligado a <strong>4 grupos químicos totalmente diferentes entre si</strong>. A molécula torna-se assimétrica e não sobreponível à sua imagem especular.
+                  </p>
+                </div>
+
+                <div className="space-y-1.5 text-slate-300 leading-relaxed">
+                  <div>
+                    <strong>• Enantiômeros:</strong> par de imagens especulares não sobreponíveis. Desviam a luz polarizada em ângulos iguais mas sentidos opostos: Dextrógiro (d / + / direita) e Levógiro (l / - / esquerda).
+                  </div>
+                  <div>
+                    <strong>• Mistura Racêmica:</strong> mistura 50% dextrógiro + 50% levógiro. É OPTICAMENTE INATIVA por compensação externa.
+                  </div>
+                  <div>
+                    <strong>• Composto Meso:</strong> possui carbonos quirais mas tem plano interno de simetria. É OPTICAMENTE INATIVO por compensação interna (ex: ácido tartárico meso).
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-800/40 text-[11px] text-emerald-200 font-mono">
+                  <strong>Fórmula de van \'t Hoff:</strong>
+                  <br />
+                  • Isômeros Opticamente Ativos = 2ⁿ (n = nº de C* diferentes)
+                  <br />
+                  • Misturas Racêmicas Inativas = 2ⁿ⁻¹
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab !== 'isomerism' && null}
     </div>
   );
 };

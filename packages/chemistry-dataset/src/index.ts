@@ -36,3 +36,18 @@ export {
   synthesizeChaosMolecule,
 } from './chaos-synthesizer.js';
 export type { ChaosSynthesizerOptions } from './chaos-synthesizer.js';
+
+export {
+  IsomerismProvider,
+  isomerismProvider,
+} from './isomerism-provider.js';
+export type {
+  IsomerPairFilter,
+  ChiralFilter,
+  GeometricFilter,
+} from './isomerism-provider.js';
+export {
+  CANONICAL_ISOMER_PAIRS,
+  CANONICAL_CHIRAL_QUESTIONS,
+  CANONICAL_GEOMETRIC_QUESTIONS,
+} from './isomerism-data.js';

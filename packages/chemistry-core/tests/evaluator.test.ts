@@ -166,7 +166,7 @@ describe('Evaluator - Scoring and Partial Credit', () => {
       expect(
         res.feedbackMessages.some((m) =>
           m.includes('[⚠️ Inversão de Prioridade IUPAC]') &&
-          m.includes('Ácido Carboxílico > Anidrido > Éster')
+          m.includes('Ácido Carboxílico > Ácido Sulfônico > Anidrido > Éster')
         )
       ).toBe(true);
 

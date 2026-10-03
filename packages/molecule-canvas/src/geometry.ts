@@ -514,6 +514,32 @@ export function buildSubstituentGroup(
       break;
     }
 
+    case '-SCH3': {
+      // Tioéter: -S-CH3, drawn with the same zigzag as the methoxy group.
+      const sAtom = makeAtom('S', anchorAtom.x + bondLength * cosA, anchorAtom.y + bondLength * sinA, 0, 0);
+      addBond(anchorAtom.id, sAtom.id, 1);
+
+      const cAngle = angleRad + Math.PI / 3;
+      const cAtom = makeAtom('C', sAtom.x + bondLength * Math.cos(cAngle), sAtom.y + bondLength * Math.sin(cAngle), 0, 3);
+      addBond(sAtom.id, cAtom.id, 1);
+      break;
+    }
+
+    case '-SO3H': {
+      // Ácido sulfônico: two S=O across the bond axis, the -OH straight ahead.
+      const sAtom = makeAtom('S', anchorAtom.x + bondLength * cosA, anchorAtom.y + bondLength * sinA, 0, 0);
+      addBond(anchorAtom.id, sAtom.id, 1);
+
+      for (const offset of [Math.PI / 2, -Math.PI / 2]) {
+        const oAngle = angleRad + offset;
+        const oAtom = makeAtom('O', sAtom.x + bondLength * Math.cos(oAngle), sAtom.y + bondLength * Math.sin(oAngle), 0, 0);
+        addBond(sAtom.id, oAtom.id, 2);
+      }
+      const ohAtom = makeAtom('O', sAtom.x + bondLength * cosA, sAtom.y + bondLength * sinA, 0, 1);
+      addBond(sAtom.id, ohAtom.id, 1);
+      break;
+    }
+
     case '-CHO': {
       // Aldehyde: -CH=O, the H is implicit.
       const cAtom = makeAtom('C', anchorAtom.x + bondLength * cosA, anchorAtom.y + bondLength * sinA, 0, 1);

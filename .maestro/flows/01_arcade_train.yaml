@@ -1,0 +1,8 @@
+appId: com.android.chrome
+---
+- tapOn:
+    text: ".*Digite a nomenclatura.*"
+- inputText: "cloreto de cloroacetila"
+- tapOn:
+    text: ".*Confirmar.*"
+- takeScreenshot: "maestro_01_arcade_feedback"

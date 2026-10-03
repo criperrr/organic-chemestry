@@ -166,6 +166,13 @@ SkeletalCanvas(
 
   const currentGraph = history[historyIndex] ?? { atoms: [], bonds: [] };
 
+  // Without an initialGraph the canvas starts from its own sample molecule, and
+  // a host that mirrors the graph (the Studio's name panel) would otherwise keep
+  // reporting an empty canvas until the first edit.
+  useEffect(() => {
+    onGraphChange?.(history[0]!);
+  }, []);
+
   useEffect(() => {
     transformRef.current = transform;
   }, [transform]);
@@ -932,6 +939,15 @@ SkeletalCanvas(
         return;
       }
 
+      if (e.code === 'Space') {
+        spacePressedRef.current = true;
+      }
+
+      // Letter shortcuts belong to the built-in toolbar. A host that hides it
+      // (the Studio) binds its own letters, and these would fight them: "O"
+      // there means auto-align, but here it turned the selected atom into oxygen.
+      if (!showToolbar) return;
+
       // Tool quick switches
       if (e.key.toLowerCase() === 'b') setActiveTool('bond');
       if (e.key.toLowerCase() === 'e') setActiveTool('eraser');
@@ -947,10 +963,6 @@ SkeletalCanvas(
         setSelectedElement('N');
         if (selectedAtomId) changeAtomElement(selectedAtomId, 'N');
       }
-
-      if (e.code === 'Space') {
-        spacePressedRef.current = true;
-      }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
@@ -965,7 +977,7 @@ SkeletalCanvas(
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [handleUndo, handleRedo, selectedAtomId, deleteAtom, handleRecenter, changeAtomElement]);
+  }, [handleUndo, handleRedo, selectedAtomId, deleteAtom, handleRecenter, changeAtomElement, showToolbar]);
 
   // Ghost preview of whatever the active stamp tool is about to add: the ring
   // under the cursor, the ring as it would hang off the hovered atom, or the

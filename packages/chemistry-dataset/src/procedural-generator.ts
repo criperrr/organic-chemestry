@@ -2,6 +2,8 @@ import {
   DifficultyTier,
   Molecule,
   OrganicFunction,
+  analyzeMolecularGraph,
+  createGraphFromSMILES,
 } from '@quimicarush/chemistry-core';
 
 /**
@@ -139,6 +141,10 @@ export class ProceduralGenerator {
       'haleto_alquila',
       'haleto_acila',
       'anidrido',
+      'tiol',
+      'tioeter',
+      'dissulfeto',
+      'acido_sulfonico',
     ];
 
     const primaryFunction = options.primaryFunction || this.rng.pick(allFunctions);
@@ -180,7 +186,71 @@ export class ProceduralGenerator {
         return this.generateAcylHalide(id, difficulty, chainLength);
       case 'anidrido':
         return this.generateAnhydride(id, difficulty, chainLength);
+      case 'tiol':
+      case 'tioeter':
+      case 'dissulfeto':
+      case 'acido_sulfonico':
+        return this.generateSulfur(id, primaryFunction, difficulty, chainLength);
     }
+  }
+
+  /**
+   * Sulfur functions. The name comes from the graph engine rather than string
+   * templates: hand-built names are where this generator and the namer used to
+   * drift apart, and the sulfur spellings (propano-1-tiol, metanossulfônico)
+   * are exactly the kind that drift.
+   */
+  private generateSulfur(
+    id: string,
+    fn: 'tiol' | 'tioeter' | 'dissulfeto' | 'acido_sulfonico',
+    difficulty: DifficultyTier,
+    len: number
+  ): Molecule {
+    const chain = Math.max(1, Math.min(len, 6));
+    const chainAt = (pos: number, group: string) =>
+      pos === 1 ? `${'C'.repeat(chain)}${group}` : `${'C'.repeat(pos - 1)}C(${group})${'C'.repeat(chain - pos)}`;
+    const pos = chain <= 2 ? 1 : this.rng.range(1, Math.floor(chain / 2) + 1);
+    const other = this.rng.range(1, 3);
+
+    let smiles: string;
+    let story: string;
+    let context: string;
+    switch (fn) {
+      case 'tiol':
+        smiles = chainAt(pos, 'S');
+        story = 'Tiol (mercaptana) de odor forte, parente sulfurado de um álcool.';
+        context = 'Grupo -SH em carbono: prefixo + infixo + "o" de ligação + sufixo -tiol.';
+        break;
+      case 'tioeter':
+        smiles = `${'C'.repeat(other)}S${'C'.repeat(chain)}`;
+        story = 'Tioéter (sulfeto orgânico): um éter com enxofre no lugar do oxigênio.';
+        context = 'Enxofre entre dois carbonos: o grupo menor vira (alquilsulfanil) e o maior é a cadeia principal.';
+        break;
+      case 'dissulfeto':
+        smiles = `${'C'.repeat(other)}SS${'C'.repeat(chain)}`;
+        story = 'Dissulfeto: dois enxofres ligados, a mesma ponte que dá forma ao cabelo.';
+        context = 'Ligação S-S entre duas cadeias: o grupo menor vira (alquildissulfanil).';
+        break;
+      case 'acido_sulfonico':
+        smiles = chainAt(pos, 'S(=O)(=O)O');
+        story = 'Ácido sulfônico, forte como o ácido sulfúrico; seus sais são detergentes.';
+        context = 'Grupo -SO3H em carbono: "ácido" + hidrocarboneto + sufixo -sulfônico.';
+        break;
+    }
+
+    const analysis = analyzeMolecularGraph(createGraphFromSMILES(smiles));
+    return {
+      id,
+      smiles,
+      iupacName: analysis.iupacName2013,
+      commonNames: [],
+      primaryFunction: fn,
+      secondaryFunctions: analysis.secondaryFunctions,
+      difficulty,
+      formula: analysis.formula,
+      realWorldStory: story,
+      educationalContext: context,
+    };
   }
 
   private generateHydrocarbon(id: string, difficulty: DifficultyTier, len: number): Molecule {

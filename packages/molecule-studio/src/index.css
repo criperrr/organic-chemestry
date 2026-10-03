@@ -1,4 +1,7 @@
 @import "tailwindcss";
+/* The Studio UI lives in a sibling package that Tailwind does not scan on its
+   own; without this none of its classes are generated. */
+@source "../../molecule-canvas/src";
 
 @layer base {
   :root {
@@ -495,6 +498,9 @@ body,
   -webkit-backdrop-filter: blur(18px) saturate(140%);
   border: 1px solid var(--md-sys-color-outline-variant);
   box-shadow: 0 12px 34px -14px rgba(0, 0, 0, 0.75);
+  /* Firefox ignores ::-webkit-scrollbar and would draw a light scrollbar. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--md-sys-color-outline-variant) transparent;
 }
 
 /* Controls fade out of the way but stay reachable. */

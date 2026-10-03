@@ -166,6 +166,47 @@ function generate(r: Rand): string {
   }
 }
 
+/**
+ * Sulfur corpus. Drawn from its own seed and appended after the main corpus, so
+ * the original 3000 molecules — and every number measured on them — stay
+ * exactly reproducible.
+ */
+const SULFUR_COUNT = Number(process.env.BRUTE_SULFUR_COUNT ?? 800);
+const SULFUR_GROUPS = ['S', 'SC', 'SCC', 'SC(C)C', 'SSC', 'SSCC', 'S(=O)(=O)O', 'Sc1ccccc1'] as const;
+
+function generateSulfur(r: Rand): string {
+  const family = Math.floor(r() * 5);
+  const sideChain = (len: number) => {
+    let out = '';
+    for (let i = 0; i < len; i++) {
+      out += 'C';
+      if (i > 0 && i < len - 1 && chance(r, 0.35)) {
+        out += `(${chance(r, 0.6) ? pick(r, SULFUR_GROUPS) : pick(r, SIDE_GROUPS)})`;
+      }
+    }
+    return out;
+  };
+
+  switch (family) {
+    case 0: // chain ending in a sulfur group
+      return randomChain(r, 1 + Math.floor(r() * 7)) + pick(r, ['S', 'S(=O)(=O)O']);
+    case 1: // sulfide / disulfide bridge between two chains
+      return `${randomChain(r, 1 + Math.floor(r() * 5))}${pick(r, ['S', 'SS'])}${randomChain(r, 1 + Math.floor(r() * 5))}`;
+    case 2: { // ring carrying sulfur groups
+      const ring = pick(r, ['c1ccccc1', 'C1CCCCC1', 'C1CCCC1', 'c1ccncc1'] as const);
+      const n = 1 + Math.floor(r() * 2);
+      const groups = Array.from({ length: n }, () =>
+        chance(r, 0.7) ? pick(r, SULFUR_GROUPS) : pick(r, SIDE_GROUPS)
+      );
+      return substituteRing(r, ring, groups);
+    }
+    case 3: // branched chain mixing sulfur and other groups
+      return sideChain(4 + Math.floor(r() * 5));
+    default: // sulfur group subordinated to a terminal function
+      return `${pick(r, ['S', 'SC', 'SSC', 'OS(=O)(=O)'])}${sideChain(2 + Math.floor(r() * 5))}${pick(r, TERMINAL_GROUPS)}`;
+  }
+}
+
 // --------------------------------------------------------------------------
 // Fingerprint (same scheme as the curated audit)
 // --------------------------------------------------------------------------
@@ -257,7 +298,9 @@ function lintName(name: string): string[] {
   const skeleton = headline.replace(/\([^()]*\)/g, m => ' '.repeat(m.length));
   const stemMatch = skeleton.match(stemRe);
   // Terminal suffixes pin C1 by definition — there is nothing to minimise.
-  const hasTerminalSuffix = /(al|onitrila|nitrila|oico|oato|oíla|amida)\b/.test(name);
+  // So does a suffix written without its locant: the doubled "ss" of
+  // "etanossulfônico" and the bare "otiol" of "etanotiol" only occur then.
+  const hasTerminalSuffix = /(al|onitrila|nitrila|oico|oato|oíla|amida|ssulfônico|ssulfonato|otiol)\b/.test(name);
 
   // prop-1-ene is written "propeno": with the locant omitted there is nothing
   // to compare, so the minimality test would read the substituent locant alone.
@@ -339,7 +382,7 @@ function lintName(name: string): string[] {
         seg
           .replace(/^(?:\d+|N'*)(?:,(?:\d+|N'*))*-?/, '')   // leading locants
           .replace(/^(di|tri|tetra|penta|hexa|bis|tris)(?=[a-zà-ú(])/, '') // multipliers
-          .replace(/[()\d,-]/g, '')                      // punctuation, inner locants
+          .replace(/[()[\]\d,-]/g, '')                    // punctuation, inner locants
           .replace(/^(terc|sec|iso)?/, m => (m === 'iso' ? 'iso' : ''))    // italics ignored
       )
       .filter(k => k.length > 2);
@@ -396,7 +439,21 @@ describe('Brute-force nomenclature audit', () => {
         /* discard malformed generation */
       }
     }
-    console.log(`Corpus gerado: ${corpus.size} moléculas\n`);
+    const mainSize = corpus.size;
+    const rs = mulberry32(SEED + 1);
+    guard = 0;
+    while (corpus.size < mainSize + SULFUR_COUNT && guard++ < SULFUR_COUNT * 30) {
+      const smiles = generateSulfur(rs);
+      try {
+        if (!ringDigitsAreSane(smiles)) continue;
+        const g = createGraphFromSMILES(smiles);
+        if (g.atoms.size < 2 || g.atoms.size > 40) continue;
+        corpus.add(smiles);
+      } catch {
+        /* discard malformed generation */
+      }
+    }
+    console.log(`Corpus gerado: ${mainSize} moléculas + ${corpus.size - mainSize} com enxofre\n`);
 
     const rows: Row[] = [];
     const pending: { index: number; enName: string }[] = [];
@@ -474,6 +531,18 @@ describe('Brute-force nomenclature audit', () => {
       console.log(`${v.padEnd(20)} ${tally.get(v) ?? 0}`);
     }
     console.log(`lint reprovado       ${linted.length}`);
+
+    // The sulfur corpus reported on its own (an uppercase S only appears there;
+    // the main corpus writes thiophene's sulfur as aromatic "s").
+    const sulfurRows = rows.filter(x => /S/.test(x.smiles));
+    const sulfurTally = new Map<Verdict, number>();
+    for (const row of sulfurRows) sulfurTally.set(row.verdict, (sulfurTally.get(row.verdict) ?? 0) + 1);
+    console.log(`\n--- só enxofre: ${sulfurRows.length} moléculas ---`);
+    console.log(`round-trip OK        ${sulfurTally.get('ok') ?? 0}  (${(((sulfurTally.get('ok') ?? 0) / Math.max(1, sulfurRows.length)) * 100).toFixed(1)}%)`);
+    for (const v of ['structure_mismatch', 'opsin_rejected', 'not_translated', 'engine_refused', 'engine_threw'] as Verdict[]) {
+      console.log(`${v.padEnd(20)} ${sulfurTally.get(v) ?? 0}`);
+    }
+    console.log(`lint reprovado       ${sulfurRows.filter(x => x.lint.length > 0).length}`);
 
     const lintTally = new Map<string, number>();
     for (const row of linted) {

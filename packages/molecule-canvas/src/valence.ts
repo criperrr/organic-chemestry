@@ -14,6 +14,8 @@ export const STANDARD_VALENCES: Record<AtomElement, number> = {
   S: 2,
   P: 3,
   H: 1,
+  Na: 0,
+  K: 0,
 };
 
 /**
@@ -30,6 +32,8 @@ export const ELEMENT_COLORS: Record<AtomElement, string> = {
   S: '#EAB308',      // Gold
   P: '#F97316',      // Orange
   H: '#64748B',      // Slate-500
+  Na: '#A78BFA',     // Violet-400 (counter-ion of a salt)
+  K: '#C084FC',      // Purple-400 (counter-ion of a salt)
 };
 
 /**

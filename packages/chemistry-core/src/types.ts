@@ -1,7 +1,9 @@
 import { z } from 'zod';
 
 /**
- * The 16 canonical organic functions from funcoes.pdf
+ * The organic functions the app teaches: the 16 of funcoes.pdf plus the
+ * sulfur functions of the Brazilian high-school curriculum (tiol, tioéter,
+ * dissulfeto, ácido sulfônico).
  */
 export type OrganicFunction =
   | 'hidrocarboneto'
@@ -19,7 +21,11 @@ export type OrganicFunction =
   | 'nitrocomposto'
   | 'haleto_alquila'
   | 'haleto_acila'
-  | 'anidrido';
+  | 'anidrido'
+  | 'tiol'
+  | 'tioeter'
+  | 'dissulfeto'
+  | 'acido_sulfonico';
 
 export const OrganicFunctionSchema = z.enum([
   'hidrocarboneto',
@@ -38,31 +44,47 @@ export const OrganicFunctionSchema = z.enum([
   'haleto_alquila',
   'haleto_acila',
   'anidrido',
+  'tiol',
+  'tioeter',
+  'dissulfeto',
+  'acido_sulfonico',
 ]);
 
 /**
- * IUPAC priority order ranking (higher number = higher priority)
- * Carboxylic Acid > Anhydride > Ester > Acyl Halide > Amide > Nitrile >
- * Aldehyde > Ketone > Alcohol > Enol > Phenol > Amine > Ether > Halide > Nitro > Hydrocarbon
+ * IUPAC priority order ranking (higher number = higher priority), after the
+ * class seniority of P-41: sulfonic acids rank right below carboxylic acids,
+ * thiols (the sulfur analogues of alcohols) right below alcohols and phenols,
+ * and sulfides/disulfides right below ethers.
+ *
+ * Carboxylic Acid > Sulfonic Acid > Anhydride > Ester > Acyl Halide > Amide >
+ * Nitrile > Aldehyde > Ketone > Alcohol > Enol > Phenol > Thiol > Amine >
+ * Ether > Sulfide > Disulfide > Halide > Nitro > Hydrocarbon
  */
 export const IUPAC_PRIORITY_ORDER: Record<OrganicFunction, number> = {
-  acido_carboxilico: 16,
-  anidrido: 15,
-  ester: 14,
-  haleto_acila: 13,
-  amida: 12,
-  nitrila: 11,
-  aldeido: 10,
-  cetona: 9,
-  alcool: 8,
-  enol: 7,
-  fenol: 6,
-  amina: 5,
-  eter: 4,
+  acido_carboxilico: 20,
+  acido_sulfonico: 19,
+  anidrido: 18,
+  ester: 17,
+  haleto_acila: 16,
+  amida: 15,
+  nitrila: 14,
+  aldeido: 13,
+  cetona: 12,
+  alcool: 11,
+  enol: 10,
+  fenol: 9,
+  tiol: 8,
+  amina: 7,
+  eter: 6,
+  tioeter: 5,
+  dissulfeto: 4,
   haleto_alquila: 3,
   nitrocomposto: 2,
   hidrocarboneto: 1,
 };
+
+/** Number of functions taught, for UI copy that used to hard-code "16". */
+export const ORGANIC_FUNCTION_COUNT = OrganicFunctionSchema.options.length;
 
 /**
  * Subordinated functional radicals and their mapping
@@ -97,6 +119,15 @@ export const SUBORDINATED_RADICALS: Record<string, OrganicFunction> = {
   bromo: 'haleto_alquila',
   iodo: 'haleto_alquila',
   nitro: 'nitrocomposto',
+  sulfo: 'acido_sulfonico',
+  sulfanil: 'tiol',
+  mercapto: 'tiol',
+  metilsulfanil: 'tioeter',
+  etilsulfanil: 'tioeter',
+  propilsulfanil: 'tioeter',
+  fenilsulfanil: 'tioeter',
+  metildissulfanil: 'dissulfeto',
+  etildissulfanil: 'dissulfeto',
 };
 
 /**
@@ -204,7 +235,7 @@ export const MoleculeSchema = z.object({
 /**
  * Supported chemical elements in 2D skeletal representation
  */
-export type AtomElement = 'C' | 'O' | 'N' | 'F' | 'Cl' | 'Br' | 'I' | 'S' | 'P' | 'H';
+export type AtomElement = 'C' | 'O' | 'N' | 'F' | 'Cl' | 'Br' | 'I' | 'S' | 'P' | 'H' | 'Na' | 'K';
 
 /**
  * Covalent bond orders

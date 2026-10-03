@@ -3,6 +3,8 @@ import {
   IUPAC_PRIORITY_ORDER,
   Molecule,
   OrganicFunction,
+  analyzeMolecularGraph,
+  createGraphFromSMILES,
 } from '@quimicarush/chemistry-core';
 
 /**
@@ -95,6 +97,22 @@ const SUBORDINATE_RADICALS_POOL: SubordinateRadicalDef[] = [
     atomCounts: { O: 1, H: -1 }, // replaced 2 hydrogens on CH2
     alphabeticalKey: 'oxo',
     isComplex: false,
+  },
+  {
+    name: 'sulfanil',
+    subFunction: 'tiol',
+    smilesFragment: 'S',
+    atomCounts: { S: 1, H: 1 },
+    alphabeticalKey: 'sulfanil',
+    isComplex: false,
+  },
+  {
+    name: '(metilsulfanil)',
+    subFunction: 'tioeter',
+    smilesFragment: 'SC',
+    atomCounts: { C: 1, H: 3, S: 1 },
+    alphabeticalKey: 'metilsulfanil',
+    isComplex: true,
   },
   {
     name: 'nitro',
@@ -373,15 +391,21 @@ export class ChaosSynthesizer {
       .map((p) => `"${p.def.name}" na posição ${p.locant}`)
       .join(', ');
 
+    // The hand-assembled name and formula are only a fallback: they drifted
+    // from the namer (a stray hyphen in "…)-heptanoico", one H too many on
+    // acyl halides), and a question bank must agree with the live engine.
+    const engine = analyzeMolecularGraph(createGraphFromSMILES(smiles));
+    const engineAgrees = engine.isNameable && engine.primaryFunction === chosenPrimary;
+
     return {
       id: `caos-${Math.floor(this.rng.next() * 1000000)}`,
       smiles,
-      iupacName,
+      iupacName: engineAgrees ? engine.iupacName2013 : iupacName,
       commonNames: [],
       primaryFunction: chosenPrimary,
       secondaryFunctions,
       difficulty: 'caos' as DifficultyTier,
-      formula,
+      formula: engineAgrees ? engine.formula : formula,
       realWorldStory: `Sintetizada como desafio extremo de nomenclatura para o Modo Caos do QuímicaRush! Esta molécula quimérica reúne ${totalGroups} funções concorrentes em um único esqueleto molecular.`,
       educationalContext: `Regra de Ouro IUPAC ("Suffix Crown Rule"): A função prioritária ${chosenPrimary.toUpperCase()} (rank ${primaryRank}) assume o sufixo principal. Todas as demais funções perdem o sufixo e são convertidas em radicais prefixais (${radicalNamesFormatted}) dispostos estritamente em ordem alfabética.`,
     };

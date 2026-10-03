@@ -117,7 +117,7 @@ describe('Navegação por gesto entre abas', () => {
   it('percorre as abas na ordem em que as barras as mostram', () => {
     // A ordem é contrato compartilhado: a barra inferior, o trilho lateral e o
     // gesto precisam concordar, senão deslizar "para a próxima" pula uma.
-    expect(TAB_ORDER).toEqual(['arcade', 'cacar', 'theory', 'sandbox']);
+    expect(TAB_ORDER).toEqual(['arcade', 'cacar', 'isomeria', 'theory', 'sandbox']);
   });
 
   it('não sai das bordas ao deslizar além da primeira ou da última', () => {

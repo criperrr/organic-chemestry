@@ -29,6 +29,7 @@ import { haptics } from '../utils/haptics.js';
 /** Single-key shortcut for each function, so the round can be played mouse-free. */
 const FUNCTION_HOTKEYS: Record<OrganicFunction, string> = {
   acido_carboxilico: 'q',
+  acido_sulfonico: 'u',
   anidrido: 'w',
   ester: 'e',
   haleto_acila: 'r',
@@ -39,8 +40,11 @@ const FUNCTION_HOTKEYS: Record<OrganicFunction, string> = {
   alcool: 'd',
   enol: 'j',
   fenol: 'g',
+  tiol: 'k',
   amina: 'h',
   eter: 'z',
+  tioeter: 'v',
+  dissulfeto: 'n',
   haleto_alquila: 'x',
   nitrocomposto: 'c',
   hidrocarboneto: 'b',
@@ -322,10 +326,10 @@ export const FunctionHunt: React.FC = () => {
           type="button"
           onClick={handleSubmit}
           disabled={selected.size === 0}
-          className="m3-button-filled w-full py-3 text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="m3-button-filled w-full py-3.5 text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed min-h-[48px] cursor-pointer"
         >
-          Conferir caçada
-          <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/20">Enter</kbd>
+          <span>Conferir caçada</span>
+          <kbd className="hidden sm:inline text-[10px] font-mono px-1.5 py-0.5 rounded bg-black/20">Enter</kbd>
         </button>
       ) : (
         <div className="flex flex-col gap-3">

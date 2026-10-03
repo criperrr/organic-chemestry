@@ -227,7 +227,7 @@ export const ALL_BADGES: readonly Badge[] = [
   {
     id: 'polymath',
     title: 'Polímata Orgânico',
-    description: 'Acertou pelo menos uma molécula de cada uma das 16 funções',
+    description: 'Acertou pelo menos uma molécula de cada uma das 20 funções',
     icon: '🌟',
     category: 'mastery',
   },
@@ -318,8 +318,8 @@ export function checkNewAchievements(
     maybeUnlock('chaos_survivor');
   }
 
-  // 8. polymath: all 16 organic functions mastered
-  if (context.uniqueFunctionsCount !== undefined && context.uniqueFunctionsCount >= 16) {
+  // 8. polymath: all 20 organic functions mastered
+  if (context.uniqueFunctionsCount !== undefined && context.uniqueFunctionsCount >= 20) {
     maybeUnlock('polymath');
   }
 

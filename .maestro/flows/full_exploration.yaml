@@ -1,0 +1,9 @@
+appId: com.android.chrome
+---
+# Suíte Completa de Testes E2E Mobile com Maestro (QuímicaRush)
+- runFlow: 01_arcade_train.yaml
+- runFlow: 02_arcade_slots.yaml
+- runFlow: 03_hunt_mode.yaml
+- runFlow: 04_isomerism_mode.yaml
+- runFlow: 05_theory_compendium.yaml
+- runFlow: 06_controls_and_theming.yaml

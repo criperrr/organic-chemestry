@@ -1,0 +1,8 @@
+appId: com.android.chrome
+---
+- tapOn:
+    text: ".*Compêndio.*"
+- assertVisible: ".*Química Orgânica Mestra.*"
+- tapOn: "Guia de Isomeria"
+- assertVisible: ".*Pronto para treinar Isomeria.*"
+- takeScreenshot: "maestro_05_theory_compendium_success"
