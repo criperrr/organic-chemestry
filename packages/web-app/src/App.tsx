@@ -43,6 +43,7 @@ export const App: React.FC = () => {
     isFullscreen,
     toggleFullscreen,
     isGoldenMolecule,
+    isStudioOpen,
   } = useGameStore();
 
   const handleSendToArcadeFromStudio = useCallback(
@@ -83,7 +84,7 @@ export const App: React.FC = () => {
 
   // Horizontal swipe (phone) and two-finger horizontal swipe (trackpad) move
   // between tabs. Disabled in focus mode or while drawing in the laboratory canvas.
-  useTabGestures(!isFullscreen && activeTab !== 'sandbox');
+  useTabGestures(!isFullscreen && activeTab !== 'sandbox' && !isStudioOpen);
 
   useEffect(() => {
     initSession();
@@ -107,7 +108,11 @@ export const App: React.FC = () => {
   // Laboratório Sandbox — dedicated, full-bleed standalone page like Excalidraw
   if (activeTab === 'sandbox') {
     return (
-      <div className="fixed inset-0 w-screen h-[100dvh] overflow-hidden bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] select-none">
+      <div
+        data-no-tab-swipe=""
+        style={{ touchAction: 'none', overscrollBehavior: 'none' }}
+        className="fixed inset-0 w-screen h-[100dvh] overflow-hidden bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] select-none"
+      >
         <MoleculeStudio
           onExit={() => setActiveTab('arcade')}
           onNavigateTab={tab => setActiveTab(tab)}

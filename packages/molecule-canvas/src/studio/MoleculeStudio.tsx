@@ -252,7 +252,11 @@ export const MoleculeStudio: React.FC<MoleculeStudioProps> = ({
   ];
 
   return (
-    <div className="relative w-full h-full overflow-hidden bg-[var(--md-sys-color-surface)] select-none">
+    <div
+      data-no-tab-swipe=""
+      style={{ touchAction: 'none', overscrollBehavior: 'none' }}
+      className="relative w-full h-full overflow-hidden bg-[var(--md-sys-color-surface)] select-none"
+    >
       {/* Drawing surface: full viewport like Excalidraw, dot-grid background */}
       <SkeletalCanvas
         ref={canvasRef}

@@ -68,6 +68,7 @@ import {
 } from './valence.js';
 import { haptics } from './haptics.js';
 import { soundSynth } from '@quimicarush/gamification-engine';
+import { createTouchGestureController, sanitizeTransform } from './touch-gestures.js';
 
 /**
  * Creates an initial ethanol molecule (CH3-CH2-OH) centered around (240, 200)
@@ -173,6 +174,18 @@ SkeletalCanvas(
     onGraphChange?.(history[0]!);
   }, []);
 
+  const updateTransformSafe = useCallback(
+    (updater: Partial<ViewTransform> | ((prev: ViewTransform) => ViewTransform)) => {
+      setTransform((prev) => {
+        const candidate = typeof updater === 'function' ? updater(prev) : { ...prev, ...updater };
+        const safe = sanitizeTransform(candidate, prev);
+        transformRef.current = safe;
+        return safe;
+      });
+    },
+    []
+  );
+
   useEffect(() => {
     transformRef.current = transform;
   }, [transform]);
@@ -252,7 +265,7 @@ SkeletalCanvas(
 
   const handleRecenter = useCallback(() => {
     if (!svgRef.current || currentGraph.atoms.length === 0) {
-      setTransform({ zoom: 1, panX: 0, panY: 0 });
+      updateTransformSafe({ zoom: 1, panX: 0, panY: 0 });
       return;
     }
 
@@ -260,23 +273,26 @@ SkeletalCanvas(
     const bounds = getGraphBounds(currentGraph.atoms);
 
     const padding = 80;
-    const availableW = Math.max(100, rect.width - padding * 2);
-    const availableH = Math.max(100, rect.height - padding * 2);
+    const availableW = Math.max(100, (rect.width || 400) - padding * 2);
+    const availableH = Math.max(100, (rect.height || 400) - padding * 2);
 
-    const scaleX = availableW / bounds.width;
-    const scaleY = availableH / bounds.height;
+    const safeBoundW = Math.max(1, bounds.width);
+    const safeBoundH = Math.max(1, bounds.height);
+
+    const scaleX = availableW / safeBoundW;
+    const scaleY = availableH / safeBoundH;
     const fitZoom = Math.min(1.6, Math.max(0.6, Math.min(scaleX, scaleY)));
 
-    const canvasCenterX = rect.width / 2;
-    const canvasCenterY = rect.height / 2;
+    const canvasCenterX = (rect.width || 400) / 2;
+    const canvasCenterY = (rect.height || 400) / 2;
 
     const panX = canvasCenterX - bounds.centerX * fitZoom;
     const panY = canvasCenterY - bounds.centerY * fitZoom;
 
-    setTransform({ zoom: fitZoom, panX, panY });
+    updateTransformSafe({ zoom: fitZoom, panX, panY });
     soundSynth.playClick();
     haptics.tap();
-  }, [currentGraph.atoms]);
+  }, [currentGraph.atoms, updateTransformSafe]);
 
   // Limpar Tela (Clear canvas)
   const handleClear = useCallback(() => {
@@ -292,34 +308,39 @@ SkeletalCanvas(
       const rect = svgRef.current.getBoundingClientRect();
       const localX = clientX - rect.left;
       const localY = clientY - rect.top;
+      const cur = transformRef.current;
+      const safeZoom = cur.zoom > 0 ? cur.zoom : 1;
 
       return {
-        x: Math.round((localX - transform.panX) / transform.zoom),
-        y: Math.round((localY - transform.panY) / transform.zoom),
+        x: Math.round((localX - cur.panX) / safeZoom),
+        y: Math.round((localY - cur.panY) / safeZoom),
       };
     },
-    [transform]
+    []
   );
 
   /** Applies a multiplicative zoom keeping the point under the cursor fixed. */
-  const zoomAtPoint = useCallback((factor: number, clientX: number, clientY: number) => {
-    const svg = svgRef.current;
-    if (!svg) return;
-    const rect = svg.getBoundingClientRect();
-    const anchorX = clientX - rect.left;
-    const anchorY = clientY - rect.top;
+  const zoomAtPoint = useCallback(
+    (factor: number, clientX: number, clientY: number) => {
+      const svg = svgRef.current;
+      if (!svg) return;
+      const rect = svg.getBoundingClientRect();
+      const anchorX = clientX - rect.left;
+      const anchorY = clientY - rect.top;
 
-    setTransform((prev) => {
-      const nextZoom = Math.min(4.0, Math.max(0.25, prev.zoom * factor));
-      if (nextZoom === prev.zoom) return prev;
-      const ratio = nextZoom / prev.zoom;
-      return {
-        zoom: nextZoom,
-        panX: anchorX - (anchorX - prev.panX) * ratio,
-        panY: anchorY - (anchorY - prev.panY) * ratio,
-      };
-    });
-  }, []);
+      updateTransformSafe((prev) => {
+        const nextZoom = Math.min(4.0, Math.max(0.25, prev.zoom * factor));
+        if (nextZoom === prev.zoom) return prev;
+        const ratio = nextZoom / prev.zoom;
+        return {
+          zoom: nextZoom,
+          panX: anchorX - (anchorX - prev.panX) * ratio,
+          panY: anchorY - (anchorY - prev.panY) * ratio,
+        };
+      });
+    },
+    [updateTransformSafe]
+  );
 
   /**
    * Trackpad and wheel input.
@@ -356,8 +377,8 @@ SkeletalCanvas(
         return;
       }
 
-      setTransform((prev) => ({
-        ...prev,
+      updateTransformSafe((prev) => ({
+        zoom: prev.zoom,
         panX: prev.panX - (event.shiftKey ? deltaY : deltaX),
         panY: prev.panY - (event.shiftKey ? 0 : deltaY),
       }));
@@ -365,7 +386,7 @@ SkeletalCanvas(
 
     svg.addEventListener('wheel', onWheel, { passive: false });
     return () => svg.removeEventListener('wheel', onWheel);
-  }, [zoomAtPoint]);
+  }, [zoomAtPoint, updateTransformSafe]);
 
   const handleAutoAlign = useCallback(() => {
     if (readOnly || currentGraph.atoms.length <= 1) return;
@@ -401,10 +422,10 @@ SkeletalCanvas(
         const rect = svg.getBoundingClientRect();
         zoomAtPoint(factor, rect.left + rect.width / 2, rect.top + rect.height / 2);
       },
-      resetZoom: () => setTransform({ zoom: 1, panX: 0, panY: 0 }),
+      resetZoom: () => updateTransformSafe({ zoom: 1, panX: 0, panY: 0 }),
       loadGraph: (graph) => commitGraph(graph, false),
     }),
-    [handleUndo, handleRedo, handleAutoAlign, handleClear, handleRecenter, zoomAtPoint, commitGraph]
+    [handleUndo, handleRedo, handleAutoAlign, handleClear, handleRecenter, zoomAtPoint, commitGraph, updateTransformSafe]
   );
 
   const editorState: SkeletalCanvasState = useMemo(
@@ -438,6 +459,31 @@ SkeletalCanvas(
   useEffect(() => {
     onStateChange?.(editorState);
   }, [editorState, onStateChange]);
+
+  /**
+   * Mobile touch gestures: multi-touch pan & pinch-to-zoom, single-finger pan
+   * with Google Earth kinetic inertia momentum, double-tap to zoom, and zero
+   * black-screen / overscroll glitches on mobile Chrome and Firefox.
+   */
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return undefined;
+
+    return createTouchGestureController({
+      svg,
+      getActiveTool: () => activeTool,
+      getTransform: () => transformRef.current,
+      onTransformChange: (next) => updateTransformSafe(next),
+      onDoubleTap: (clientX, clientY) => {
+        zoomAtPoint(1.4, clientX, clientY);
+        soundSynth.playSnap();
+        haptics.tap();
+      },
+      onCancelActiveDraw: () => {
+        setDragBond(null);
+      },
+    });
+  }, [activeTool, zoomAtPoint, updateTransformSafe]);
 
   /**
    * Safari on macOS emits its own pinch gestures instead of ctrl+wheel, so the
@@ -614,16 +660,23 @@ SkeletalCanvas(
   const handlePointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
     if (readOnly) return;
 
-    // Middle click, Pan tool, or Space key activates panning
+    // Mobile touch gestures handle panning and multi-touch directly with inertia
+    if (e.pointerType === 'touch' && activeTool === 'pan') {
+      return;
+    }
+
+    // Middle click, Pan tool (desktop mouse), or Space key activates panning
     if (e.button === 1 || activeTool === 'pan' || spacePressedRef.current) {
-      setIsPanning(true);
-      panStartRef.current = {
-        x: e.clientX,
-        y: e.clientY,
-        initialPanX: transform.panX,
-        initialPanY: transform.panY,
-      };
-      (e.target as Element).setPointerCapture?.(e.pointerId);
+      if (e.pointerType !== 'touch') {
+        setIsPanning(true);
+        panStartRef.current = {
+          x: e.clientX,
+          y: e.clientY,
+          initialPanX: transformRef.current.panX,
+          initialPanY: transformRef.current.panY,
+        };
+        (e.target as Element).setPointerCapture?.(e.pointerId);
+      }
       return;
     }
 
@@ -757,17 +810,20 @@ SkeletalCanvas(
 
   // Pointer Move handler
   const handlePointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (e.pointerType === 'touch' && activeTool === 'pan') {
+      return;
+    }
+
     const worldPos = screenToWorld(e.clientX, e.clientY);
     setMouseWorldPos(worldPos);
 
-    if (isPanning && panStartRef.current) {
+    if (isPanning && panStartRef.current && e.pointerType !== 'touch') {
       const dx = e.clientX - panStartRef.current.x;
       const dy = e.clientY - panStartRef.current.y;
-      setTransform((prev) => ({
-        ...prev,
-        panX: panStartRef.current!.initialPanX + dx,
-        panY: panStartRef.current!.initialPanY + dy,
-      }));
+      updateTransformSafe({
+        panX: panStartRef.current.initialPanX + dx,
+        panY: panStartRef.current.initialPanY + dy,
+      });
       return;
     }
 
@@ -826,7 +882,11 @@ SkeletalCanvas(
 
   // Pointer Up handler
   const handlePointerUp = (e: React.PointerEvent<SVGSVGElement>) => {
-    if (isPanning) {
+    if (e.pointerType === 'touch' && activeTool === 'pan') {
+      return;
+    }
+
+    if (isPanning && e.pointerType !== 'touch') {
       setIsPanning(false);
       panStartRef.current = null;
       try {
@@ -1359,12 +1419,27 @@ SkeletalCanvas(
       {/* Main Interactive SVG Canvas Surface                                       */}
       {/* ------------------------------------------------------------------------- */}
       <div
-        className="relative w-full flex-1 overflow-hidden"
-        style={{ height: typeof height === 'number' ? `${height}px` : height, minHeight: '380px' }}
+        data-no-tab-swipe=""
+        className="relative w-full flex-1 overflow-hidden touch-none select-none"
+        style={{
+          height: typeof height === 'number' ? `${height}px` : height,
+          minHeight: '380px',
+          touchAction: 'none',
+          overscrollBehavior: 'none',
+          WebkitUserSelect: 'none',
+          userSelect: 'none',
+        }}
       >
         <svg
           ref={svgRef}
-          className="w-full h-full cursor-crosshair touch-none"
+          data-no-tab-swipe=""
+          className="w-full h-full cursor-crosshair touch-none select-none"
+          style={{
+            touchAction: 'none',
+            overscrollBehavior: 'none',
+            WebkitUserSelect: 'none',
+            userSelect: 'none',
+          }}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
@@ -1717,7 +1792,7 @@ SkeletalCanvas(
         <div className="absolute bottom-4 right-4 flex items-center gap-1.5 p-1 rounded-2xl bg-[var(--md-sys-color-surface-container-high)]/90 backdrop-blur-md border border-[var(--md-sys-color-outline-variant)] shadow-md">
           <button
             type="button"
-            onClick={() => setTransform((t) => ({ ...t, zoom: Math.min(3.0, t.zoom * 1.2) }))}
+            onClick={() => updateTransformSafe((t) => ({ ...t, zoom: Math.min(4.0, t.zoom * 1.2) }))}
             className="p-1.5 rounded-xl hover:bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] transition-colors"
             title="Aumentar Zoom"
           >
@@ -1730,7 +1805,7 @@ SkeletalCanvas(
 
           <button
             type="button"
-            onClick={() => setTransform((t) => ({ ...t, zoom: Math.max(0.4, t.zoom / 1.2) }))}
+            onClick={() => updateTransformSafe((t) => ({ ...t, zoom: Math.max(0.25, t.zoom / 1.2) }))}
             className="p-1.5 rounded-xl hover:bg-[var(--md-sys-color-surface-container-highest)] text-[var(--md-sys-color-on-surface)] transition-colors"
             title="Diminuir Zoom"
           >
