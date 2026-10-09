@@ -14,6 +14,7 @@ const SHORTCUT_CATEGORIES = [
       { key: 'V', label: 'Alternar Abas', desc: 'Alterna Arcade, Compêndio e Laboratório' },
       { key: '?', label: 'Guia de Atalhos', desc: 'Abre/fecha este painel cheatsheet' },
       { key: 'M', label: 'Silenciar Som', desc: 'Alterna mudo da Web Audio API' },
+      { key: 'Shift+B', label: 'Reportar Erro', desc: 'Abre o formulário para relatar bug ou problema com prints' },
       { key: 'Esc', label: 'Sair do Foco / Fechar', desc: 'Sai do Modo Foco ou fecha modais' },
     ],
   },

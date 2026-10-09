@@ -20,19 +20,22 @@ export interface NamePanelProps {
 /**
  * The live readout: what the structure on the canvas is called, and why.
  */
-const FormulaText: React.FC<{ formula: string }> = ({ formula }) => (
-  <>
-    {formula.split(/(\d+)/).map((part, i) =>
-      /^\d+$/.test(part) ? (
-        <sub key={i} className="text-[0.75em] leading-none align-baseline relative -bottom-[0.15em]">
-          {part}
-        </sub>
-      ) : (
-        <span key={i}>{part}</span>
-      )
-    )}
-  </>
-);
+const FormulaText: React.FC<{ formula: string }> = ({ formula }) => {
+  if (!formula) return null;
+  return (
+    <>
+      {formula.split(/(\d+)/).map((part, i) =>
+        /^\d+$/.test(part) ? (
+          <sub key={i} className="text-[0.75em] leading-none align-baseline relative -bottom-[0.15em]">
+            {part}
+          </sub>
+        ) : (
+          <span key={i}>{part}</span>
+        )
+      )}
+    </>
+  );
+};
 
 export const NamePanel: React.FC<NamePanelProps> = ({ analysis, top, onHide, onSendToArcade }) => {
   const [copied, setCopied] = useState<string | null>(null);
@@ -115,20 +118,23 @@ export const NamePanel: React.FC<NamePanelProps> = ({ analysis, top, onHide, onS
 
           {functions.length > 0 && (
             <div className="flex items-center gap-1.5 flex-wrap">
-              {functions.map((fn, index) => (
-                <span
-                  key={fn}
-                  title={`${FUNCTION_GUIDE[fn].recognition} — sufixo ${FUNCTION_GUIDE[fn].suffix}`}
-                  className={`m3-chip py-0.5 px-2 text-[11px] font-semibold gap-1 ${
-                    index === 0
-                      ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] border-[var(--md-sys-color-primary)]'
-                      : ''
-                  }`}
-                >
-                  {functionLabelPtBR(fn)}
-                  <span className="font-mono opacity-60">{FUNCTION_GUIDE[fn].suffix}</span>
-                </span>
-              ))}
+              {functions.map((fn, index) => {
+                const guide = FUNCTION_GUIDE[fn];
+                return (
+                  <span
+                    key={fn}
+                    title={guide ? `${guide.recognition} — sufixo ${guide.suffix}` : functionLabelPtBR(fn)}
+                    className={`m3-chip py-0.5 px-2 text-[11px] font-semibold gap-1 ${
+                      index === 0
+                        ? 'bg-[var(--md-sys-color-primary-container)] text-[var(--md-sys-color-on-primary-container)] border-[var(--md-sys-color-primary)]'
+                        : ''
+                    }`}
+                  >
+                    {functionLabelPtBR(fn)}
+                    {guide?.suffix && <span className="font-mono opacity-60">{guide.suffix}</span>}
+                  </span>
+                );
+              })}
             </div>
           )}
 

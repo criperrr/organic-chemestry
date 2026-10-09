@@ -675,7 +675,15 @@ SkeletalCanvas(
           initialPanX: transformRef.current.panX,
           initialPanY: transformRef.current.panY,
         };
-        (e.target as Element).setPointerCapture?.(e.pointerId);
+        try {
+          if (svgRef.current && typeof svgRef.current.setPointerCapture === 'function') {
+            svgRef.current.setPointerCapture(e.pointerId);
+          } else {
+            (e.target as Element).setPointerCapture?.(e.pointerId);
+          }
+        } catch {
+          // ignore InvalidPointerId or detached element error
+        }
       }
       return;
     }
@@ -750,7 +758,15 @@ SkeletalCanvas(
           snappedY: clickedAtom.y,
           targetAtomId: null,
         });
-        (e.target as Element).setPointerCapture?.(e.pointerId);
+        try {
+          if (svgRef.current && typeof svgRef.current.setPointerCapture === 'function') {
+            svgRef.current.setPointerCapture(e.pointerId);
+          } else {
+            (e.target as Element).setPointerCapture?.(e.pointerId);
+          }
+        } catch {
+          // ignore InvalidPointerId or detached element error
+        }
         return;
       }
 
@@ -928,7 +944,7 @@ SkeletalCanvas(
           // Cycle existing bond
           cycleBondOrder(existingBond.id);
         }
-      } else if (draggedDist >= 12) {
+      } else if (draggedDist >= 20) {
         // Dragged enough to form a new carbon atom at snapped point
         const newAtom: AtomNode = {
           id: generateUniqueId('c'),
@@ -951,6 +967,7 @@ SkeletalCanvas(
         });
         setSelectedAtomId(newAtom.id);
       }
+      // If draggedDist < 20 and no target, user dragged and returned to origin or just clicked: cancel drag without creating overlapping atom
 
       setDragBond(null);
     }
@@ -1031,11 +1048,21 @@ SkeletalCanvas(
       }
     };
 
+    const handleWindowPointerUp = () => {
+      setIsPanning(false);
+      panStartRef.current = null;
+      setDragBond(null);
+    };
+
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('pointerup', handleWindowPointerUp);
+    window.addEventListener('pointercancel', handleWindowPointerUp);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('pointerup', handleWindowPointerUp);
+      window.removeEventListener('pointercancel', handleWindowPointerUp);
     };
   }, [handleUndo, handleRedo, selectedAtomId, deleteAtom, handleRecenter, changeAtomElement, showToolbar]);
 

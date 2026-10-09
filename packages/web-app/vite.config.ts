@@ -3,11 +3,14 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import path from 'node:path';
 
+import { bugReportPlugin } from './vite-plugin-bug-report.js';
+
 export default defineConfig({
   base: './',
   plugins: [
     tailwindcss(),
     react(),
+    bugReportPlugin(),
   ],
   resolve: {
     alias: {

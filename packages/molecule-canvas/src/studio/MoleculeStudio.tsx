@@ -24,6 +24,35 @@ import { StartersPanel } from './StartersPanel.js';
 import { ShortcutsPanel } from './ShortcutsPanel.js';
 
 const EMPTY_GRAPH: MolecularGraphData = { atoms: [], bonds: [] };
+const DRAFT_STORAGE_KEY = 'quimicarush_laboratory_draft';
+
+function loadSavedDraft(): MolecularGraphData | null {
+  if (typeof window === 'undefined' || !window.localStorage) return null;
+  try {
+    const raw = window.localStorage.getItem(DRAFT_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && Array.isArray(parsed.atoms) && Array.isArray(parsed.bonds)) {
+      return parsed;
+    }
+  } catch {
+    // corrupted draft
+  }
+  return null;
+}
+
+function saveDraftToStorage(graph: MolecularGraphData) {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  try {
+    if (graph.atoms.length === 0) {
+      window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+    } else {
+      window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(graph));
+    }
+  } catch {
+    // quota exceeded or storage blocked
+  }
+}
 
 /** Single-key tool shortcuts, chosen not to collide with the panel toggles. */
 const TOOL_KEYS: Record<string, CanvasTool> = {
@@ -57,7 +86,11 @@ export const MoleculeStudio: React.FC<MoleculeStudioProps> = ({
 }) => {
   const canvasRef = useRef<SkeletalCanvasHandle | null>(null);
   const headerRef = useRef<HTMLElement | null>(null);
-  const [graph, setGraph] = useState<MolecularGraphData>(initialGraph ?? EMPTY_GRAPH);
+  const [graph, setGraph] = useState<MolecularGraphData>(() => {
+    if (initialGraph) return initialGraph;
+    const saved = loadSavedDraft();
+    return saved ?? EMPTY_GRAPH;
+  });
   const [canvasState, setCanvasState] = useState<SkeletalCanvasState | null>(null);
   const [showToolbar, setShowToolbar] = useState(true);
   const [showName, setShowName] = useState(true);
@@ -71,6 +104,11 @@ export const MoleculeStudio: React.FC<MoleculeStudioProps> = ({
   const analysis = useMemo(() => analyzeMolecularGraph(graph), [graph]);
   const isZenMode = !showToolbar && !showName && !showStarters && !showShortcuts;
 
+  const handleGraphChange = useCallback((nextGraph: MolecularGraphData) => {
+    setGraph(nextGraph);
+    saveDraftToStorage(nextGraph);
+  }, []);
+
   const handleStateChange = useCallback((next: SkeletalCanvasState) => {
     setCanvasState(next);
   }, []);
@@ -78,6 +116,7 @@ export const MoleculeStudio: React.FC<MoleculeStudioProps> = ({
   const loadStarter = useCallback((starter: MolecularGraphData) => {
     canvasRef.current?.loadGraph(starter);
     setGraph(starter);
+    saveDraftToStorage(starter);
     requestAnimationFrame(() => canvasRef.current?.recenter());
   }, []);
 
@@ -263,7 +302,7 @@ export const MoleculeStudio: React.FC<MoleculeStudioProps> = ({
         showToolbar={false}
         height="100%"
         initialGraph={initialGraph}
-        onGraphChange={setGraph}
+        onGraphChange={handleGraphChange}
         onStateChange={handleStateChange}
         className="!rounded-none !border-0 !shadow-none h-full w-full"
       />

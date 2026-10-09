@@ -13,11 +13,13 @@ import { KeyboardShortcuts } from './components/KeyboardShortcuts.js';
 import { KeyboardCheatsheetModal } from './components/KeyboardCheatsheetModal.js';
 import { AchievementsModal } from './components/AchievementsModal.js';
 import { MoleculeZoomModal } from './components/MoleculeZoomModal.js';
+import { BugReportModal } from './components/BugReportModal.js';
 import { StudioOverlay } from './components/StudioOverlay.js';
 import { FluidMolecule } from './components/FluidMolecule.js';
 import { soundSynth } from '@quimicarush/gamification-engine';
 import { MoleculeStudio } from '@quimicarush/molecule-canvas';
 import type { MolecularGraphAnalysis } from '@quimicarush/chemistry-core';
+import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { useGameStore } from './stores/useGameStore.js';
 import {
   Sparkles,
@@ -108,17 +110,19 @@ export const App: React.FC = () => {
   // Laboratório Sandbox — dedicated, full-bleed standalone page like Excalidraw
   if (activeTab === 'sandbox') {
     return (
-      <div
-        data-no-tab-swipe=""
-        style={{ touchAction: 'none', overscrollBehavior: 'none' }}
-        className="fixed inset-0 w-screen h-[100dvh] overflow-hidden bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] select-none"
-      >
-        <MoleculeStudio
-          onExit={() => setActiveTab('arcade')}
-          onNavigateTab={tab => setActiveTab(tab)}
-          onSendToArcade={handleSendToArcadeFromStudio}
-        />
-      </div>
+      <ErrorBoundary fallbackTitle="Laboratório de Moléculas">
+        <div
+          data-no-tab-swipe=""
+          style={{ touchAction: 'none', overscrollBehavior: 'none' }}
+          className="fixed inset-0 w-screen h-[100dvh] overflow-hidden bg-[var(--md-sys-color-surface)] text-[var(--md-sys-color-on-surface)] select-none"
+        >
+          <MoleculeStudio
+            onExit={() => setActiveTab('arcade')}
+            onNavigateTab={tab => setActiveTab(tab)}
+            onSendToArcade={handleSendToArcadeFromStudio}
+          />
+        </div>
+      </ErrorBoundary>
     );
   }
 
@@ -133,6 +137,7 @@ export const App: React.FC = () => {
       <KeyboardCheatsheetModal />
       <AchievementsModal />
       <MoleculeZoomModal />
+      <BugReportModal />
       <MobileControlSheet />
 
       {/* Full-screen structural editor, over everything when open */}

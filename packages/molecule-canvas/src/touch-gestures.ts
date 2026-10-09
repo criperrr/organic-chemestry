@@ -27,11 +27,19 @@ export function sanitizeTransform(
   candidate: Partial<ViewTransform>,
   fallback: ViewTransform
 ): ViewTransform {
-  const zoom = Number.isFinite(candidate.zoom)
-    ? Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, candidate.zoom!))
-    : fallback.zoom;
-  const panX = Number.isFinite(candidate.panX) ? candidate.panX! : fallback.panX;
-  const panY = Number.isFinite(candidate.panY) ? candidate.panY! : fallback.panY;
+  const safeFallbackZoom = Number.isFinite(fallback?.zoom) ? fallback.zoom : 1.0;
+  const safeFallbackPanX = Number.isFinite(fallback?.panX) ? fallback.panX : 0;
+  const safeFallbackPanY = Number.isFinite(fallback?.panY) ? fallback.panY : 0;
+
+  const rawZoom = Number.isFinite(candidate?.zoom) ? candidate.zoom! : safeFallbackZoom;
+  const zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, rawZoom));
+
+  const rawPanX = Number.isFinite(candidate?.panX) ? candidate.panX! : safeFallbackPanX;
+  const rawPanY = Number.isFinite(candidate?.panY) ? candidate.panY! : safeFallbackPanY;
+
+  // Clamp pan coordinates within a safe ±8000px range to prevent SVG GPU layer overflow / black screen
+  const panX = Math.min(8000, Math.max(-8000, rawPanX));
+  const panY = Math.min(8000, Math.max(-8000, rawPanY));
 
   return { zoom, panX, panY };
 }

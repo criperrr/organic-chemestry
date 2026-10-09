@@ -35,11 +35,39 @@ export interface UnlockedBadgeRecord {
   unlockedAt: number;
 }
 
+export interface StoredBugReport {
+  id: string;
+  timestamp: number;
+  dateIso: string;
+  dateFormatted: string;
+  category: string;
+  title: string;
+  description: string;
+  expectedBehavior?: string;
+  screenshotBase64?: string;
+  syncedToFile: boolean;
+  filePath?: string;
+  context: {
+    activeTab: string;
+    moleculeId?: string;
+    smiles?: string;
+    iupacName?: string;
+    formula?: string;
+    userInput?: string;
+    difficulty?: string;
+    score?: number;
+    userAgent: string;
+    screenResolution: string;
+    url: string;
+  };
+}
+
 export class QuimicaRushDatabase extends Dexie {
   attempts!: Table<UserAttempt, number>;
   functionStats!: Table<FunctionMasteryStat, OrganicFunction>;
   highScores!: Table<HighScoreRecord, number>;
   unlockedBadges!: Table<UnlockedBadgeRecord, string>;
+  bugReports!: Table<StoredBugReport, string>;
 
   constructor() {
     super('QuimicaRushHistoryDB');
@@ -50,6 +78,9 @@ export class QuimicaRushDatabase extends Dexie {
     });
     this.version(2).stores({
       unlockedBadges: 'badgeId, unlockedAt',
+    });
+    this.version(3).stores({
+      bugReports: 'id, timestamp, category, syncedToFile',
     });
   }
 
@@ -158,6 +189,40 @@ export class QuimicaRushDatabase extends Dexie {
   }
 
   /**
+   * Records a user bug report.
+   */
+  public async recordBugReport(report: StoredBugReport): Promise<void> {
+    try {
+      await this.bugReports.put(report);
+    } catch (err) {
+      console.warn('historyDb.recordBugReport encountered an error:', err);
+    }
+  }
+
+  /**
+   * Retrieves all recorded bug reports, ordered by timestamp descending.
+   */
+  public async getBugReports(): Promise<StoredBugReport[]> {
+    try {
+      return await this.bugReports.orderBy('timestamp').reverse().toArray();
+    } catch (err) {
+      console.warn('historyDb.getBugReports encountered an error:', err);
+      return [];
+    }
+  }
+
+  /**
+   * Deletes a recorded bug report by id.
+   */
+  public async deleteBugReport(id: string): Promise<void> {
+    try {
+      await this.bugReports.delete(id);
+    } catch (err) {
+      console.warn('historyDb.deleteBugReport encountered an error:', err);
+    }
+  }
+
+  /**
    * Clears all historical data (for resetting user profile).
    */
   public async clearAll(): Promise<void> {
@@ -166,6 +231,7 @@ export class QuimicaRushDatabase extends Dexie {
       await this.functionStats.clear();
       await this.highScores.clear();
       await this.unlockedBadges.clear();
+      await this.bugReports.clear();
     } catch (err) {
       console.warn('historyDb.clearAll encountered an error:', err);
     }

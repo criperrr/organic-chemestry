@@ -19,6 +19,7 @@ import {
   Minimize2,
   Crosshair,
   GitFork,
+  Bug,
 } from 'lucide-react';
 import { useGameStore, MONET_PALETTES } from '../stores/useGameStore.js';
 import { ALL_BADGES } from '@quimicarush/gamification-engine';
@@ -74,6 +75,7 @@ export const NavigationRail: React.FC = () => {
     toggleFullscreen,
     openAchievementsModal,
     toggleCheatsheet,
+    openBugReportModal,
   } = useGameStore();
 
   const unlockedCount = unlockedBadgeIds.length;
@@ -219,6 +221,22 @@ export const NavigationRail: React.FC = () => {
             <kbd className="px-1.5 py-0.5 rounded bg-[var(--md-sys-color-surface-container-highest)] border border-[var(--md-sys-color-outline-variant)] text-[10px] font-mono text-[var(--md-sys-color-on-surface-variant)]">
               ?
             </kbd>
+          </button>
+
+          {/* Bug / Error Report Trigger */}
+          <button
+            type="button"
+            onClick={() => openBugReportModal()}
+            className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl bg-[var(--md-sys-color-surface-container)] hover:bg-[var(--md-sys-color-surface-container-high)] border border-[var(--md-sys-color-outline-variant)] hover:border-[var(--md-sys-color-error)] text-xs font-semibold text-[var(--md-sys-color-on-surface)] transition-all cursor-pointer shadow-sm active:scale-98 group"
+            title="Reportar Erro, Inconsistência ou Bug"
+          >
+            <div className="flex items-center gap-2.5">
+              <Bug className="w-4 h-4 text-[var(--md-sys-color-error)] group-hover:scale-110 transition-transform" />
+              <span>Reportar Erro</span>
+            </div>
+            <span className="px-1.5 py-0.5 rounded bg-[var(--md-sys-color-error-container)]/50 text-[var(--md-sys-color-error)] font-mono text-[10px] font-bold">
+              Bug
+            </span>
           </button>
         </div>
       </div>
@@ -510,6 +528,7 @@ export const MobileControlSheet: React.FC = () => {
     openAchievementsModal,
     isFullscreen,
     toggleFullscreen,
+    openBugReportModal,
   } = useGameStore();
 
   useEffect(() => {
@@ -640,6 +659,22 @@ export const MobileControlSheet: React.FC = () => {
               <span>{isFullscreen ? 'Sair do Modo Foco' : 'Ativar Modo Foco / Tela Cheia'}</span>
             </div>
             <span className="text-xs text-[var(--md-sys-color-primary)] font-mono">[F]</span>
+          </button>
+
+          {/* Reportar Erro / Bug Button */}
+          <button
+            type="button"
+            onClick={() => {
+              closeMobileControlSheet();
+              openBugReportModal();
+            }}
+            className="p-3 rounded-2xl bg-[var(--md-sys-color-surface-container-high)] border border-[var(--md-sys-color-outline-variant)] flex items-center justify-between text-xs font-bold cursor-pointer hover:border-[var(--md-sys-color-error)] transition-colors min-h-[44px]"
+          >
+            <div className="flex items-center gap-2 text-[var(--md-sys-color-on-surface)]">
+              <Bug className="w-4 h-4 text-[var(--md-sys-color-error)]" />
+              <span>Reportar Erro, Bug ou Sugestão</span>
+            </div>
+            <span className="text-xs text-[var(--md-sys-color-error)] font-mono font-bold">Abrir →</span>
           </button>
 
           {/* Dificuldade Filter */}

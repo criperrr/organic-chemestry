@@ -11,6 +11,7 @@ import {
   RotateCcw,
   Trophy,
   X,
+  Bug,
 } from 'lucide-react';
 import { useGameStore } from '../stores/useGameStore.js';
 
@@ -28,6 +29,8 @@ export const FeedbackCard: React.FC = () => {
     nearMissNotice,
     lastIsSpeedBlitz,
     lastResponseTimeMs,
+    userInput,
+    openBugReportModal,
   } = useGameStore();
 
   if (!currentEvaluation || !currentMolecule) return null;
@@ -376,6 +379,30 @@ export const FeedbackCard: React.FC = () => {
             )}
           </div>
         )}
+
+        {/* Inconsistency / Bug report trigger for this molecule */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2 px-1 text-[11px] text-[var(--md-sys-color-on-surface-variant)]">
+          <span>Identificou algum erro nesta molécula, regra ou gabarito?</span>
+          <button
+            type="button"
+            onClick={() =>
+              openBugReportModal({
+                moleculeId: currentMolecule.id,
+                iupacName: currentMolecule.iupacName,
+                smiles: currentMolecule.smiles,
+                formula: currentMolecule.formula,
+                difficulty: currentMolecule.difficulty,
+                score: currentEvaluation.score,
+                userInput: userInput || undefined,
+                activeTab: 'arcade',
+              })
+            }
+            className="flex items-center gap-1.5 font-bold text-[var(--md-sys-color-error)] hover:underline cursor-pointer py-1 px-2.5 rounded-lg bg-[var(--md-sys-color-surface-container-high)] hover:bg-[var(--md-sys-color-error-container)]/30 border border-[var(--md-sys-color-outline-variant)] hover:border-[var(--md-sys-color-error)] transition-colors shrink-0"
+          >
+            <Bug className="w-3.5 h-3.5" />
+            <span>Reportar Erro nesta Questão</span>
+          </button>
+        </div>
       </div>
     </div>
   );

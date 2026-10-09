@@ -52,6 +52,9 @@ export const KeyboardShortcuts: React.FC = () => {
     closeAchievementsModal,
     isMoleculeZoomOpen,
     closeMoleculeZoom,
+    isBugReportModalOpen,
+    openBugReportModal,
+    closeBugReportModal,
     isFullscreen,
     toggleFullscreen,
     setFullscreen,
@@ -80,6 +83,10 @@ export const KeyboardShortcuts: React.FC = () => {
       // 2. Escape: Closes open modals or exits focus mode or clears state
       if (e.key === 'Escape') {
         e.preventDefault();
+        if (isBugReportModalOpen) {
+          closeBugReportModal();
+          return;
+        }
         if (isCheatsheetOpen) {
           closeCheatsheet();
           return;
@@ -109,7 +116,14 @@ export const KeyboardShortcuts: React.FC = () => {
       }
 
       // If modal is open, do not handle game actions
-      if (isCheatsheetOpen || isAchievementsModalOpen || isMoleculeZoomOpen) {
+      if (isBugReportModalOpen || isCheatsheetOpen || isAchievementsModalOpen || isMoleculeZoomOpen) {
+        return;
+      }
+
+      // 2.5 Bug Report trigger with Shift+B or '!'
+      if ((e.key === '!' || (e.shiftKey && (e.key === 'B' || e.key === 'b'))) && !isInputFocused) {
+        e.preventDefault();
+        openBugReportModal();
         return;
       }
 

@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+name: Deploy to Production Server
 
 on:
   push:
@@ -7,20 +7,12 @@ on:
       - dev
   workflow_dispatch:
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
 concurrency:
-  group: 'pages'
+  group: 'production-deploy'
   cancel-in-progress: false
 
 jobs:
   build-and-deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -41,14 +33,15 @@ jobs:
       - name: Build applications
         run: npm run build
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: 'packages/web-app/dist'
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Deploy to Production Server
+        if: env.SSH_KEY != ''
+        env:
+          SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_USER: ${{ secrets.DEPLOY_USER || 'criper' }}
+          SSH_HOST: ${{ secrets.DEPLOY_HOST || 'quimica.redznn.duckdns.org' }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          rsync -avz --delete -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new" packages/web-app/dist/ "$SSH_USER@$SSH_HOST:/var/www/quimicarush/"

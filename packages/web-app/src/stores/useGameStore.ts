@@ -225,6 +225,17 @@ function loadMoleculesForFilter(
   return shuffleArray(list);
 }
 
+export interface BugReportContext {
+  moleculeId?: string;
+  smiles?: string;
+  formula?: string;
+  iupacName?: string;
+  userInput?: string;
+  activeTab?: string;
+  difficulty?: string;
+  score?: number;
+}
+
 export interface GameStore {
   // Session core
   currentMolecule: Molecule | null;
@@ -266,6 +277,8 @@ export interface GameStore {
   isCheatsheetOpen: boolean;
   isMobileControlSheetOpen: boolean;
   isMoleculeZoomOpen: boolean;
+  isBugReportModalOpen: boolean;
+  bugReportContext: BugReportContext | null;
   quickRadicalMode: { active: boolean; locant?: string };
 
   // Modality & View
@@ -332,6 +345,8 @@ export interface GameStore {
   toggleMobileControlSheet: () => void;
   openMoleculeZoom: () => void;
   closeMoleculeZoom: () => void;
+  openBugReportModal: (customContext?: Partial<BugReportContext>) => void;
+  closeBugReportModal: () => void;
   setQuickRadicalMode: (mode: { active: boolean; locant?: string }) => void;
   dismissBadgeToast: () => void;
   /** Rolls the golden-molecule dice for the question being served. */
@@ -415,6 +430,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   isCheatsheetOpen: false,
   isMobileControlSheetOpen: false,
   isMoleculeZoomOpen: false,
+  isBugReportModalOpen: false,
+  bugReportContext: null,
   quickRadicalMode: { active: false },
 
   inputMode: 'speedrunner',
@@ -1242,6 +1259,32 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const { soundEnabled } = get();
     if (soundEnabled) soundSynth.playClick();
     set({ isMoleculeZoomOpen: false });
+  },
+
+  openBugReportModal: (customContext) => {
+    const { soundEnabled, currentMolecule, activeTab, currentEvaluation, userInput } = get();
+    if (soundEnabled) soundSynth.playClick();
+    haptics.tap();
+    const baseContext: BugReportContext = {
+      moleculeId: currentMolecule?.id,
+      smiles: currentMolecule?.smiles,
+      formula: currentMolecule?.formula,
+      iupacName: currentMolecule?.iupacName,
+      difficulty: currentMolecule?.difficulty,
+      userInput: userInput ? userInput.trim() : undefined,
+      activeTab,
+      score: currentEvaluation?.score,
+    };
+    set({
+      isBugReportModalOpen: true,
+      bugReportContext: { ...baseContext, ...customContext },
+    });
+  },
+
+  closeBugReportModal: () => {
+    const { soundEnabled } = get();
+    if (soundEnabled) soundSynth.playClick();
+    set({ isBugReportModalOpen: false, bugReportContext: null });
   },
 
   setQuickRadicalMode: (mode: { active: boolean; locant?: string }) => {

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect } from 'react';
 import { MoleculeStudio } from '@quimicarush/molecule-canvas';
 import type { MolecularGraphAnalysis } from '@quimicarush/chemistry-core';
+import { ErrorBoundary } from './ErrorBoundary.js';
 import { useGameStore } from '../stores/useGameStore.js';
 
 /**
@@ -48,7 +49,9 @@ export const StudioOverlay: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-[60] bg-[var(--md-sys-color-surface)]">
-      <MoleculeStudio onExit={() => setStudioOpen(false)} onSendToArcade={handleSendToArcade} />
+      <ErrorBoundary fallbackTitle="Estúdio de Moléculas" onReset={() => setStudioOpen(false)}>
+        <MoleculeStudio onExit={() => setStudioOpen(false)} onSendToArcade={handleSendToArcade} />
+      </ErrorBoundary>
     </div>
   );
 };
